@@ -17,6 +17,7 @@ using PMS.API.Infrastructure.Data;
 using PMS.API.Infrastructure.Interfaces;
 using PMS.API.Web;
 using PMS.API.Web.Common;
+using PMS.API.Web.Helpers;
 using PMS.API.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -98,7 +99,7 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
   containerBuilder.RegisterModule(new DefaultInfrastructureModule(builder.Environment.EnvironmentName == "Development"));
 });
 builder.Services.AddHealthChecks().AddNpgSql(connectionString!);
-//await builder.Services.SeedUserAsync();
+await builder.Services.SeedUserAsync();
 
 #region Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
