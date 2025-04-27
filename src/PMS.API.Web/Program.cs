@@ -7,6 +7,7 @@ using Hangfire.PostgreSql;
 using HealthChecks.UI.Client;
 using LiteDB;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
 using PMS.API.Application;
 using PMS.API.Application.Common.Helpers;
@@ -122,6 +123,11 @@ builder.Services.AddHangfireServer(options => options.WorkerCount = 1); // ✅ E
 
 
 var app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+  ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 if (app.Environment.IsDevelopment())
 {
