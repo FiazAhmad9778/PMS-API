@@ -39,11 +39,13 @@ public class EmailSenderService : IEmailSenderService
       var smtpPassword = _configuration["Smtp:Password"];
       var senderName = _configuration["Smtp:SenderName"];
       if (smtpEmail == null) return false;
+
       using var smtpClient = new SmtpClient(smtpHost)
       {
         Port = smtpPort,
-        Credentials = new NetworkCredential(smtpEmail, smtpPassword),
-        EnableSsl = true
+        EnableSsl = true,
+        UseDefaultCredentials = false,
+        Credentials = new NetworkCredential(smtpEmail, smtpPassword)
       };
 
       var mailMessage = new MailMessage

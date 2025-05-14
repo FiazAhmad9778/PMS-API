@@ -7,8 +7,8 @@ public enum AppUserTypeEnums
 
 public enum DocumentStatus
 {
-  Pending = 1,
-  Processing = 2,
+  DataEntryRegTech = 1,
+  PhysicalCheckRegTech = 2,
   Completed = 3,
   Failed = 4,
 }

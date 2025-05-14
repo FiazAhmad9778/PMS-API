@@ -10,3 +10,10 @@ public class DocumentResponseDto
   public int NoOfPatients { get; set; }
   public DocumentStatus Status { get; set; }
 }
+
+
+public class PendingDocumentResponseDto
+{
+  public int DataEntryCount { get; set; }
+  public int PhysicalCheckCount { get; set; }
+}

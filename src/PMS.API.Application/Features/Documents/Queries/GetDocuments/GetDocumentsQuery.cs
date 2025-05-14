@@ -13,7 +13,7 @@ namespace PMS.API.Application.Features.Documents.Queries.GetDocuments;
 
 public class GetDocumentsQuery : PagedQueryBaseRequest, IRequest<ApplicationResult<List<DocumentResponseDto>>>
 {
-  public DocumentStatus Status { get; set; } = DocumentStatus.Processing;
+  public DocumentStatus Status { get; set; } = DocumentStatus.DataEntryRegTech;
 }
 
 public class GetDocumentsQueryHandler : RequestHandlerBase<GetDocumentsQuery, ApplicationResult<List<DocumentResponseDto>>>

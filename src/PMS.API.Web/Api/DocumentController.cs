@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Documents.Commands.UploadSignedDocument;
 using PMS.API.Application.Features.Documents.DTO;
+using PMS.API.Application.Features.Documents.Queries.GetDocument;
 using PMS.API.Application.Features.Documents.Queries.GetDocuments;
 using PMS.API.Application.Services.Interfaces;
 
@@ -33,9 +34,16 @@ public class DocumentController : BaseApiController
     return await _documentService.GetDocumentPdfAsync(id);
   }
 
+  [HttpGet("get")]
+  [ProducesResponseType(typeof(DocumentResponseDto), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<DocumentResponseDto>> GetDocumentAsync([FromQuery] GetDocumentQuery query)
+  {
+    return await Mediator.Send(query);
+  }
+
   [HttpGet("get-pending-document-count")]
-  [ProducesResponseType(typeof(ApplicationResult<int>), StatusCodes.Status200OK)]
-  public async Task<ApplicationResult<int>> GetPendingDocumentCount([FromQuery] GetPendingDocumentsCountQuery query)
+  [ProducesResponseType(typeof(ApplicationResult<PendingDocumentResponseDto>), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<PendingDocumentResponseDto>> GetPendingDocumentCount([FromQuery] GetPendingDocumentsCountQuery query)
   {
     return await Mediator.Send(query);
   }

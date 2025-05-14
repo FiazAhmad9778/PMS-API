@@ -3,17 +3,18 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
 using PMS.API.Application.Common.Models;
+using PMS.API.Application.Features.Documents.DTO;
 using PMS.API.Core.Domain.Interfaces.Repositories;
 using PMS.API.Core.Enums;
 using PMS.API.Core.Extensions;
 
 namespace PMS.API.Application.Features.Documents.Queries.GetDocuments;
 
-public class GetPendingDocumentsCountQuery : IRequest<ApplicationResult<int>>
+public class GetPendingDocumentsCountQuery : IRequest<ApplicationResult<PendingDocumentResponseDto>>
 {
 }
 
-public class GetPendingDocumentsCountQueryHandler : RequestHandlerBase<GetPendingDocumentsCountQuery, ApplicationResult<int>>
+public class GetPendingDocumentsCountQueryHandler : RequestHandlerBase<GetPendingDocumentsCountQuery, ApplicationResult<PendingDocumentResponseDto>>
 {
   private readonly IDocumentRepository _repository;
 
@@ -25,10 +26,12 @@ public class GetPendingDocumentsCountQueryHandler : RequestHandlerBase<GetPendin
     _repository = repository;
   }
 
-  protected override async Task<ApplicationResult<int>> HandleRequest(GetPendingDocumentsCountQuery request, CancellationToken cancellationToken)
+  protected override async Task<ApplicationResult<PendingDocumentResponseDto>> HandleRequest(GetPendingDocumentsCountQuery request, CancellationToken cancellationToken)
   {
-    var query = _repository.Get().Include(x => x.Metadata).Where(x => x.Status == DocumentStatus.Processing).AsQueryable();
-    int totalCount = await query.CountAsync();
-    return ApplicationResult<int>.SuccessResult(totalCount);
+    var dataEntryRegTech = _repository.Get().Include(x => x.Metadata).Where(x => x.Status == DocumentStatus.DataEntryRegTech).AsQueryable();
+    int regTechCount = await dataEntryRegTech.CountAsync();
+    var physicalCheck = _repository.Get().Include(x => x.Metadata).Where(x => x.Status == DocumentStatus.PhysicalCheckRegTech).AsQueryable();
+    int physicalCheckCount = await physicalCheck.CountAsync();
+    return ApplicationResult<PendingDocumentResponseDto>.SuccessResult(new PendingDocumentResponseDto { DataEntryCount = regTechCount, PhysicalCheckCount = physicalCheckCount });
   }
 }

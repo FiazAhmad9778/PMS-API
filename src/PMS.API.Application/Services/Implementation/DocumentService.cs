@@ -106,7 +106,7 @@ public class DocumentService : IDocumentService
     {
       var metadata = await GetDocumentMetadata(documentName);
       var newDocumentUrl = await MoveDocument(documentName, true);
-      SaveDocument(newDocumentUrl, documentName, metadata, DocumentStatus.Processing);
+      SaveDocument(newDocumentUrl, documentName, metadata, DocumentStatus.DataEntryRegTech);
       Console.WriteLine($"[SUCCESS] Processed document: {documentName}");
     }
     catch (Exception ex)
@@ -276,7 +276,7 @@ public class DocumentService : IDocumentService
     if (document == null) return ApplicationResult<bool>.Error("No file uploaded.");
 
     // Ensure the document is in Processing status
-    if (document.Status != DocumentStatus.Processing)
+    if (document.Status != DocumentStatus.PhysicalCheckRegTech && document.Status != DocumentStatus.DataEntryRegTech)
       return ApplicationResult<bool>.Error("Document is not in processing status.");
 
     // Extract file name from document URL
@@ -286,12 +286,14 @@ public class DocumentService : IDocumentService
     // Delete the old document from the processing folder
     await DeleteDocumentFromProcessing(processingPath);
 
+    var isProcessing = document.Status == DocumentStatus.DataEntryRegTech;
+
     // Upload new signed document to completed folder
-    string newDocumentUrl = await UploadSignedDocumentToCompleted(file, fileName);
+    string newDocumentUrl = await UploadSignedDocumentToFolder(file, fileName, isProcessing);
 
     // Update document status to Completed
     document.DocumentUrl = newDocumentUrl;
-    document.Status = DocumentStatus.Completed;
+    document.Status = isProcessing ? DocumentStatus.PhysicalCheckRegTech : DocumentStatus.Completed;
     document.ModifiedDate = DateTime.UtcNow;
     await _documentRepository.UpdateAsync(document);
 
@@ -320,7 +322,7 @@ public class DocumentService : IDocumentService
       fileBytes = memoryStream.ToArray();
     }
 
-    var documentUrl = await UploadSignedDocumentToCompleted(file, file.FileName);
+    var documentUrl = await UploadSignedDocumentToFolder(file, file.FileName);
 
     if (documentUrl == null) return ApplicationResult<bool>.Error("Unable to upload file");
 
@@ -331,9 +333,10 @@ public class DocumentService : IDocumentService
     return ApplicationResult<bool>.SuccessResult(true);
   }
 
-  private async Task<string> UploadSignedDocumentToCompleted(IFormFile file, string fileName)
+  private async Task<string> UploadSignedDocumentToFolder(IFormFile file, string fileName, bool isProcessing = false)
   {
-    string completedPath = $"{_baseUrl}/completed/";
+    var folderName = isProcessing ? "processing" : "completed";
+    string completedPath = $"{_baseUrl}/{folderName}/";
     using HttpClient client = new HttpClient();
 
     string authToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{_username}:{_password}"));
