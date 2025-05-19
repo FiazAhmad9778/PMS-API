@@ -36,7 +36,7 @@ public class GetDocumentsQueryHandler : RequestHandlerBase<GetDocumentsQuery, Ap
 
     if (!string.IsNullOrEmpty(request.SearchKeyword))
     {
-      query = query.Where(d => d.Metadata.Any(m =>
+      query = query.Where(d => d.DocumentName.ToLower().Contains(request.SearchKeyword.ToLower()) || d.Metadata.Any(m =>
           (m.Key == "UniqueNames" && m.Value.ToLower().Contains(request.SearchKeyword)) ||
           (m.Key == "Cycles" && m.Value.ToLower().Contains(request.SearchKeyword)) ||
           (m.Key == "RXNumbers" && m.Value.ToLower().Contains(request.SearchKeyword))
