@@ -29,3 +29,28 @@ public class UploadSignedDocumentCommandHandler : RequestHandlerBase<UploadSigne
     return await _documentService.UploadSignedDocument(request.Id, request.SignedDocument);
   }
 }
+
+
+public class DeleteUnSignedDocumentCommand : IRequest<ApplicationResult<bool>>
+{
+  public long Id { get; set; }
+}
+
+public class DeleteUnSignedDocumentCommandHandler : RequestHandlerBase<DeleteUnSignedDocumentCommand, ApplicationResult<bool>>
+{
+  private readonly IDocumentService _documentService;
+
+  public DeleteUnSignedDocumentCommandHandler(
+    IDocumentService documentService,
+    IServiceProvider serviceProvider,
+    ILogger<UploadSignedDocumentCommandHandler> logger) : base(serviceProvider, logger)
+  {
+    _documentService = documentService;
+  }
+
+  protected override async Task<ApplicationResult<bool>> HandleRequest(DeleteUnSignedDocumentCommand request, CancellationToken cancellationToken)
+  {
+    return await _documentService.DeleteUnSignedDocument(request.Id);
+  }
+}
+

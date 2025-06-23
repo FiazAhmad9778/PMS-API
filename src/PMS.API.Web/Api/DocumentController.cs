@@ -55,6 +55,13 @@ public class DocumentController : BaseApiController
     return await Mediator.Send(command);
   }
 
+  [HttpDelete("delete-document/{id}")]
+  [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<bool>> DeleteDocument([FromRoute] DeleteUnSignedDocumentCommand command)
+  {
+    return await Mediator.Send(command);
+  }
+
   [HttpPost("upload-completed-document")]
   [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<bool>> UploadSignedDocument([FromForm] UploadCompletedDocumentCommand command)

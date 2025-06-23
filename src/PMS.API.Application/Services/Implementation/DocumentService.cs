@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
@@ -77,26 +79,35 @@ public class DocumentService : IDocumentService
       throw new Exception($"Failed to fetch document list. Status: {response.StatusCode}");
 
     var htmlContent = await response.Content.ReadAsStringAsync();
-    return ExtractFileNamesFromHtml(htmlContent, ".pdf");
+    return ExtractFileNamesFromHtml(htmlContent, ".pdf", 1);
   }
 
-  private static List<string> ExtractFileNamesFromHtml(string htmlContent, string fileExtension)
+  private static List<string> ExtractFileNamesFromHtml(string htmlContent, string fileExtension, int minAgeMinutes = 1)
   {
     var documentNames = new List<string>();
-    var htmlDoc = new HtmlAgilityPack.HtmlDocument();
-    htmlDoc.LoadHtml(htmlContent);
+    var now = DateTime.UtcNow;
 
-    var links = htmlDoc.DocumentNode.SelectNodes("//a[@href]");
-    if (links == null) return documentNames;
+    var lines = htmlContent.Split('\n');
+    var regex = new Regex(@"href=""(?<href>[^""]+\.pdf)""[^>]*>(?<name>.*?)<\/a>\s+(?<date>\d{2}-[A-Za-z]{3}-\d{4})\s+(?<time>\d{2}:\d{2})");
 
-    foreach (var link in links)
+    foreach (var line in lines)
     {
-      var href = link.GetAttributeValue("href", string.Empty);
-      if (!string.IsNullOrEmpty(href) && href.EndsWith(fileExtension, StringComparison.OrdinalIgnoreCase))
+      var match = regex.Match(line);
+      if (!match.Success) continue;
+
+      var fileName = WebUtility.UrlDecode(match.Groups["href"].Value.Trim());
+      var dateStr = match.Groups["date"].Value;
+      var timeStr = match.Groups["time"].Value;
+
+      if (DateTime.TryParseExact($"{dateStr} {timeStr}", "dd-MMM-yyyy HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var uploadTime))
       {
-        documentNames.Add(Path.GetFileName(href));
+        if ((now - uploadTime).TotalMinutes >= minAgeMinutes)
+        {
+          documentNames.Add(Path.GetFileName(fileName));
+        }
       }
     }
+
     return documentNames;
   }
 
@@ -299,6 +310,30 @@ public class DocumentService : IDocumentService
 
     return ApplicationResult<bool>.SuccessResult(true);
   }
+
+  public async Task<ApplicationResult<bool>> DeleteUnSignedDocument(long documentId)
+  {
+    // Fetch document from the database
+    var document = await _documentRepository.Get()
+        .FirstOrDefaultAsync(d => d.Id == documentId);
+
+    if (document == null) return ApplicationResult<bool>.Error("No file uploaded.");
+
+    // Ensure the document is in Processing status
+    if (document.Status != DocumentStatus.DataEntryRegTech)
+      return ApplicationResult<bool>.Error("Document can't be deleted.");
+
+    // Extract file name from document URL
+    string fileName = Path.GetFileName(document.DocumentUrl);
+    string processingPath = $"{_baseUrl}/processing/{fileName}";
+
+    // Delete the old document from the processing folder
+    await DeleteDocumentFromProcessing(processingPath);
+    await _documentRepository.DeleteAsync(document.Id);
+
+    return ApplicationResult<bool>.SuccessResult(true);
+  }
+
 
   private async Task DeleteDocumentFromProcessing(string processingPath)
   {

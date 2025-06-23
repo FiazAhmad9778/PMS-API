@@ -41,6 +41,13 @@ public class UserController : BaseApiController
     return await Mediator.Send(command);
   }
 
+  [HttpPut("update-signature")]
+  [ProducesResponseType(typeof(ApplicationResult<long>), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<long>> UpdateUserSignature([FromForm] UpdateUserSignatureCommand command)
+  {
+    return await Mediator.Send(command);
+  }
+
   [HttpGet("get")]
   [ProducesResponseType(typeof(ApplicationResult<UserResponseDto>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<UserResponseDto>> GetUser([FromQuery] GetUserQuery query)
