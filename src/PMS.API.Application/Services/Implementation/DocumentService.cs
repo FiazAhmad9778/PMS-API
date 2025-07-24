@@ -223,7 +223,17 @@ public class DocumentService : IDocumentService
     var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(documentName);
     var extension = Path.GetExtension(documentName);
 
-    var destinationUrl = $"{_baseUrl}/{destinationFolder}/{fileNameWithoutExtension}_{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{extension}";
+    var extraBad = new[] { '#' };
+    var invalids = Path.GetInvalidFileNameChars()
+                       .Concat(extraBad)
+                       .ToHashSet();
+
+    // strip them out
+    var safeName = new string(fileNameWithoutExtension
+        .Where(c => !invalids.Contains(c))
+        .ToArray());
+
+    var destinationUrl = $"{_baseUrl}/{destinationFolder}/{safeName}_{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{extension}";
 
     var request = new HttpRequestMessage(new HttpMethod("MOVE"), sourceUrl);
     request.Headers.Add("Destination", destinationUrl);
