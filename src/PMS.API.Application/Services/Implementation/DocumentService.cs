@@ -115,8 +115,9 @@ public class DocumentService : IDocumentService
   {
     try
     {
-      var metadata = await GetDocumentMetadata(documentName);
-      var newDocumentUrl = await MoveDocument(documentName, true);
+      var encodedName = Uri.EscapeDataString(documentName);
+      var metadata = await GetDocumentMetadata(encodedName);
+      var newDocumentUrl = await MoveDocument(encodedName, true);
       SaveDocument(newDocumentUrl, documentName, metadata, DocumentStatus.DataEntryRegTech);
       Console.WriteLine($"[SUCCESS] Processed document: {documentName}");
     }
@@ -223,17 +224,8 @@ public class DocumentService : IDocumentService
     var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(documentName);
     var extension = Path.GetExtension(documentName);
 
-    var extraBad = new[] { '#' };
-    var invalids = Path.GetInvalidFileNameChars()
-                       .Concat(extraBad)
-                       .ToHashSet();
 
-    // strip them out
-    var safeName = new string(fileNameWithoutExtension
-        .Where(c => !invalids.Contains(c))
-        .ToArray());
-
-    var destinationUrl = $"{_baseUrl}/{destinationFolder}/{safeName}_{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{extension}";
+    var destinationUrl = $"{_baseUrl}/{destinationFolder}/{fileNameWithoutExtension}_{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{extension}";
 
     var request = new HttpRequestMessage(new HttpMethod("MOVE"), sourceUrl);
     request.Headers.Add("Destination", destinationUrl);
