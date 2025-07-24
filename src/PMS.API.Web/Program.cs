@@ -174,15 +174,10 @@ using (var scope = app.Services.CreateScope())
     // ✅ Ensure Hangfire storage is initialized before scheduling jobs
     var recurringJobManager = services.GetRequiredService<IRecurringJobManager>();
 
-    // ✅ Schedule the recurring job (Runs every 2 minutes from 5 AM to 11 PM)
     recurringJobManager.AddOrUpdate<IDocumentService>(
         "sync-documents",
         service => service.SyncDocuments(CancellationToken.None),
-        "*/2 5-23 * * *",
-        new RecurringJobOptions
-        {
-          TimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/New_York")
-        }
+        "*/2 * * * *"
     );
 
   }
