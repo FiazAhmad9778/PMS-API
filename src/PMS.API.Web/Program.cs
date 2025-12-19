@@ -173,17 +173,17 @@ using (var scope = app.Services.CreateScope())
     // ✅ Ensure Hangfire storage is initialized before scheduling jobs
     var recurringJobManager = services.GetRequiredService<IRecurringJobManager>();
 
-    //recurringJobManager.AddOrUpdate<IDocumentService>(
-    //    "sync-documents",
-    //    service => service.SyncDocuments(CancellationToken.None),
-    //    "*/2 * * * *"
-    //);
+    recurringJobManager.AddOrUpdate<IDocumentService>(
+        "sync-documents",
+        service => service.SyncDocuments(CancellationToken.None),
+        "*/2 * * * *"
+    );
 
     // Schedule recurring job to process pending orders every 10 minutes
     recurringJobManager.AddOrUpdate<IOrderFaxService>(
         "process-pending-orders",
         service => service.ProcessPendingOrdersAsync(CancellationToken.None),
-        "*/10 * * * *" // Every 10 minutes
+        "*/2 * * * *" // Every 10 minutes
     );
 
   }

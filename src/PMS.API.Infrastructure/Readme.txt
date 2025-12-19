@@ -10,3 +10,6 @@ dotnet ef  database update --project src\PMS.API.infrastructure --startup-projec
 
 ----------------------------Remove Migration----------------------------------
 dotnet ef migrations remove --project src\PMS.API.infrastructure --startup-project src\PMS.API.web
+
+
+cd /var/www/PMS-API/src && dotnet ef database update --project PMS.API.Infrastructure/PMS.API.Infrastructure.csproj --startup-project PMS.API.Web/PMS.API.Web.csproj
