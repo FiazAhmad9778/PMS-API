@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMS.API.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PMS.API.Infrastructure.Data;
 namespace PMS.API.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251205221401_AddedOrderTable")]
+    partial class AddedOrderTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -723,19 +726,11 @@ namespace PMS.API.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("phoneNumber");
 
-                    b.Property<string>("WebhookId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("webhookId");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedDate");
 
                     b.HasIndex("FaxStatus");
-
-                    b.HasIndex("WebhookId")
-                        .IsUnique();
 
                     b.HasIndex("FaxStatus", "CreatedDate");
 

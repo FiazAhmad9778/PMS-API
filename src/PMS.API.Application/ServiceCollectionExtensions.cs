@@ -36,6 +36,9 @@ public static class ServiceCollectionExtensions
     services.AddTransient<IExceptionHelper, ExceptionHelper>();
     services.AddTransient<IEmailSenderService, EmailSenderService>();
     services.AddScoped<IDocumentService, DocumentService>();
+    services.AddScoped<IPdfService, PdfService>();
+    services.AddScoped<IInterFaxService, InterFaxService>();
+    services.AddScoped<IOrderFaxService, OrderFaxService>();
   }
 
   private static void RegisterData(IServiceCollection services)

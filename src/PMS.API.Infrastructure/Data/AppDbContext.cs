@@ -45,6 +45,7 @@ public class AppDbContext : IdentityDbContext<User,
   public DbSet<RoleClaim> RoleClaim => Set<RoleClaim>();
   public DbSet<Document> Document => Set<Document>();
   public DbSet<DocumentMetadata> DocumentMetadata => Set<DocumentMetadata>();
+  public DbSet<Order> Order => Set<Order>();
 
   #endregion
   public DbSet<PMSErrorLog> PMSErrorLogs => Set<PMSErrorLog>();

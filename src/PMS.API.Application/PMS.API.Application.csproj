@@ -1,5 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Sdk Name="Microsoft.Build.CentralPackageVersions" Version="2.1.3" />
+  
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -28,6 +29,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="PdfPig" />
+    <PackageReference Include="QuestPDF" />
     <PackageReference Include="Polybioz.HtmlRenderer.PdfSharp.Core" />
     <PackageReference Include="SendGrid" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />

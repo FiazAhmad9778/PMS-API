@@ -11,5 +11,6 @@ public static class RepositoryInstaller
     services.AddTransient(typeof(IRepository<>), typeof(BaseRepository<>));
     services.AddTransient<IUserRepository, UserRepository>();
     services.AddTransient<IDocumentRepository, DocumentRepository>();
+    services.AddTransient<IOrderRepository, OrderRepository>();
   }
 }

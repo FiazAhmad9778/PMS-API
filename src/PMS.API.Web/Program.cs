@@ -18,7 +18,6 @@ using PMS.API.Infrastructure.Data;
 using PMS.API.Infrastructure.Interfaces;
 using PMS.API.Web;
 using PMS.API.Web.Common;
-using PMS.API.Web.Helpers;
 using PMS.API.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -100,7 +99,7 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
   containerBuilder.RegisterModule(new DefaultInfrastructureModule(builder.Environment.EnvironmentName == "Development"));
 });
 builder.Services.AddHealthChecks().AddNpgSql(connectionString!);
-await builder.Services.SeedUserAsync();
+//await builder.Services.SeedUserAsync();
 
 #region Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
@@ -174,10 +173,17 @@ using (var scope = app.Services.CreateScope())
     // ✅ Ensure Hangfire storage is initialized before scheduling jobs
     var recurringJobManager = services.GetRequiredService<IRecurringJobManager>();
 
-    recurringJobManager.AddOrUpdate<IDocumentService>(
-        "sync-documents",
-        service => service.SyncDocuments(CancellationToken.None),
-        "*/2 * * * *"
+    //recurringJobManager.AddOrUpdate<IDocumentService>(
+    //    "sync-documents",
+    //    service => service.SyncDocuments(CancellationToken.None),
+    //    "*/2 * * * *"
+    //);
+
+    // Schedule recurring job to process pending orders every 10 minutes
+    recurringJobManager.AddOrUpdate<IOrderFaxService>(
+        "process-pending-orders",
+        service => service.ProcessPendingOrdersAsync(CancellationToken.None),
+        "*/10 * * * *" // Every 10 minutes
     );
 
   }
