@@ -183,7 +183,7 @@ using (var scope = app.Services.CreateScope())
     recurringJobManager.AddOrUpdate<IOrderFaxService>(
         "process-pending-orders",
         service => service.ProcessPendingOrdersAsync(CancellationToken.None),
-        "*/2 * * * *" // Every 10 minutes
+        "*/10 * * * *" // Every 10 minutes
     );
 
   }

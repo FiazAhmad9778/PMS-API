@@ -195,7 +195,6 @@ public class PdfService : IPdfService
                   column.Item().Padding(10).Text(notes).FontSize(10);
                 }
 
-
                 column.Item()
                   .Border(1).BorderColor(Colors.Grey.Medium)
                   .Padding(12)

@@ -69,6 +69,7 @@ public class DocumentService : IDocumentService
   private async Task<List<string>> FetchDocumentNames(string folderPath)
   {
     using HttpClient client = new HttpClient();
+    client.Timeout = TimeSpan.FromMinutes(5);
 
     string authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_username}:{_password}"));
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
@@ -166,6 +167,7 @@ public class DocumentService : IDocumentService
   {
     // Create HttpClient with the custom handler
     using HttpClient client = new HttpClient();
+    client.Timeout = TimeSpan.FromMinutes(5);
 
     // Add Basic Authentication header manually
     string authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_username}:{_password}"));
@@ -213,6 +215,7 @@ public class DocumentService : IDocumentService
   private async Task<string> MoveDocument(string documentName, bool isSuccess = true)
   {
     using HttpClient client = new HttpClient();
+    client.Timeout = TimeSpan.FromMinutes(5);
 
     string authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_username}:{_password}"));
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
@@ -340,6 +343,7 @@ public class DocumentService : IDocumentService
   private async Task DeleteDocumentFromProcessing(string processingPath)
   {
     using HttpClient client = new HttpClient();
+    client.Timeout = TimeSpan.FromMinutes(5);
     string authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_username}:{_password}"));
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
     var request = new HttpRequestMessage(HttpMethod.Delete, processingPath);
@@ -375,6 +379,7 @@ public class DocumentService : IDocumentService
     var folderName = isProcessing ? "processing" : "completed";
     string completedPath = $"{_baseUrl}/{folderName}/";
     using HttpClient client = new HttpClient();
+    client.Timeout = TimeSpan.FromMinutes(5);
 
     string authToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{_username}:{_password}"));
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
