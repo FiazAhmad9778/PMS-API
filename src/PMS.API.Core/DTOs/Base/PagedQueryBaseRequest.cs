@@ -10,4 +10,6 @@ public class PagedQueryBaseRequest
   public string? SearchKeyword { get; set; }
   public DateTime FromDate { get; set; }
   public DateTime ToDate { get; set; }
+  public long? OrganizationId { get; set; }
+  public string? Ward { get; set; }
 }

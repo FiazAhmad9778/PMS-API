@@ -4,4 +4,5 @@ public interface IEmailSenderService
 {
   Task<bool> SendCredentialsEmail(EmailData model);
   Task<bool> SendResetPasswordEmail(EmailData model);
+  Task<bool> SendEmail(string toEmail, string subject, string body);
 }

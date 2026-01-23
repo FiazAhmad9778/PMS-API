@@ -3,6 +3,7 @@ using Autofac;
 using MediatR;
 using MediatR.Pipeline;
 using PMS.API.Core.Interfaces;
+using PMS.API.Core.Domain.Interfaces;
 using PMS.API.Infrastructure.Data;
 using PMS.API.SharedKernel.Interfaces;
 using Module = Autofac.Module;
@@ -53,8 +54,9 @@ public class DefaultInfrastructureModule : Module
   private void RegisterCommonDependencies(ContainerBuilder builder)
   {
     builder.RegisterGeneric(typeof(EfRepository<>))
-      .As(typeof(IRepository<>))
+      .As(typeof(SharedKernel.Interfaces.IRepository<>))
       .As(typeof(IReadRepository<>))
+      .As(typeof(IEfRepository<>))
       .InstancePerLifetimeScope();
 
     builder

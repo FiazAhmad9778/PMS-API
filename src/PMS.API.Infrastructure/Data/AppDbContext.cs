@@ -46,6 +46,9 @@ public class AppDbContext : IdentityDbContext<User,
   public DbSet<Document> Document => Set<Document>();
   public DbSet<DocumentMetadata> DocumentMetadata => Set<DocumentMetadata>();
   public DbSet<Order> Order => Set<Order>();
+  public DbSet<Organization> Organization => Set<Organization>();
+  public DbSet<Patient> Patient => Set<Patient>();
+  public DbSet<Ward> Ward => Set<Ward>();
 
   #endregion
   public DbSet<PMSErrorLog> PMSErrorLogs => Set<PMSErrorLog>();
@@ -91,6 +94,9 @@ public class AppDbContext : IdentityDbContext<User,
 
     builder.Entity<DocumentMetadata>()
         .HasIndex(dm => dm.CreatedDate);
+
+    builder.Entity<Organization>()
+        .HasIndex(o => o.Name);
 
     DataSeeds.DataSeeder.SeedData(builder);
     builder.AddQueryFilterToAllEntitiesAssignableFrom<ISoftDeleteEntity>(_ => !_.IsDeleted);

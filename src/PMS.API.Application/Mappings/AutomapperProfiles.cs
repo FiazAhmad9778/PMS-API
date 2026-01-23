@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
 using PMS.API.Application.Features.Documents.DTO;
+using PMS.API.Application.Features.Organizations.DTO;
+using PMS.API.Application.Features.Patients.DTO;
 using PMS.API.Application.Features.Users.DTO;
 using PMS.API.Core.Domain.Entities;
 using PMS.API.Core.Domain.Entities.Identity;
@@ -12,5 +14,7 @@ public class AutomapperProfiles : Profile
   {
     CreateMap<User, UserResponseDto>();
     CreateMap<Document, DocumentResponseDto>();
+    CreateMap<Organization, OrganizationResponseDto>();
+    CreateMap<Patient, PatientResponseDto>();
   }
 }

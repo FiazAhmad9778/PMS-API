@@ -9,9 +9,9 @@ using LiteDB;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
+using PdfSharpCore.Fonts;
 using PMS.API.Application;
 using PMS.API.Application.Common.Helpers;
-using PMS.API.Application.Services.Interfaces;
 using PMS.API.Core;
 using PMS.API.Infrastructure;
 using PMS.API.Infrastructure.Data;
@@ -21,6 +21,11 @@ using PMS.API.Web.Common;
 using PMS.API.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure PdfSharpCore font resolver early to avoid TypeInitializationException
+// This must be set before any PdfSharpCore operations are performed
+GlobalFontSettings.FontResolver = new PdfFontResolver();
+
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
 builder.Services.Configure<CookiePolicyOptions>(options =>
@@ -173,18 +178,18 @@ using (var scope = app.Services.CreateScope())
     // ✅ Ensure Hangfire storage is initialized before scheduling jobs
     var recurringJobManager = services.GetRequiredService<IRecurringJobManager>();
 
-    recurringJobManager.AddOrUpdate<IDocumentService>(
-        "sync-documents",
-        service => service.SyncDocuments(CancellationToken.None),
-        "*/2 * * * *"
-    );
+    //recurringJobManager.AddOrUpdate<IDocumentService>(
+    //    "sync-documents",
+    //    service => service.SyncDocuments(CancellationToken.None),
+    //    "*/2 * * * *"
+    //);
 
     // Schedule recurring job to process pending orders every 10 minutes
-    recurringJobManager.AddOrUpdate<IOrderFaxService>(
-        "process-pending-orders",
-        service => service.ProcessPendingOrdersAsync(CancellationToken.None),
-        "*/3 * * * *" // Every 10 minutes
-    );
+    //recurringJobManager.AddOrUpdate<IOrderFaxService>(
+    //    "process-pending-orders",
+    //    service => service.ProcessPendingOrdersAsync(CancellationToken.None),
+    //    "*/10 * * * *" // Every 10 minutes
+    //);
 
   }
   catch (Exception ex)
