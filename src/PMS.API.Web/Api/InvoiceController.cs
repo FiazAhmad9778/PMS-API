@@ -1,14 +1,16 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PMS.API.Application.Common.Helpers;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Invoice.Command;
 using PMS.API.Application.Features.Invoice.DTO;
 using PMS.API.Application.Features.Invoices.Commands.GenerateInvoice;
+using PMS.API.Application.Features.Patients.Commands.ExportOrganizationCharges;
 
 namespace PMS.API.Web.Api;
 
 [Route("api/[controller]")]
-[Authorize]
+[AllowAnonymous]
 [ApiController]
 public class InvoiceController : BaseApiController
 {
@@ -21,7 +23,7 @@ public class InvoiceController : BaseApiController
   public async Task<IActionResult> GenerateInvoice([FromBody] GenerateInvoiceCommand command)
   {
     var result = await Mediator.Send(command);
-    
+
     if (result.IsSuccess && result.Data != null)
     {
       var fileName = $"Invoice_{command.PatientId}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
@@ -30,7 +32,7 @@ public class InvoiceController : BaseApiController
         FileDownloadName = fileName
       };
     }
-    
+
     return BadRequest(result);
   }
 
@@ -85,6 +87,31 @@ public class InvoiceController : BaseApiController
         excelBytes,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         $"ClientInvoice_{command.PatientId}_{DateTime.UtcNow:yyyyMMdd}.xlsx"
+    );
+  }
+
+  [HttpPost("organizationCharges/excel")]
+  [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+  public async Task<IActionResult> OrganizationChargesExcel(
+      [FromBody] ExportOrganizationChargesCommand command)
+  {
+    var result = await Mediator.Send(command);
+
+    if (!result.Success || result.Data == null)
+      return BadRequest(result);
+
+    // Create Excel with both worksheets even if one is empty
+    var excelBytes =
+        ExcelExportHelper.GenerateOrganizationChargesExcel(
+          result.Data.Charges ?? new(),
+          result.Data.Clients ?? new(),
+          command.FromDate,
+          command.ToDate);
+
+    return File(
+        excelBytes,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        $"OrganizationCharges_{command.NHID}_{DateTime.UtcNow:yyyyMMdd}.xlsx"
     );
   }
 }
