@@ -23,5 +23,6 @@ public class ClaimApplication : IClaimApplication
     var allClaims = _context.ApplicationClaims.ToList();
 
     return allClaims;
+    //return new List<ApplicationClaim>();
   }
 }

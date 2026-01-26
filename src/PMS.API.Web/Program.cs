@@ -9,7 +9,7 @@ using LiteDB;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
-using PdfSharpCore.Fonts;
+using OfficeOpenXml;
 using PMS.API.Application;
 using PMS.API.Application.Common.Helpers;
 using PMS.API.Core;
@@ -24,7 +24,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Configure PdfSharpCore font resolver early to avoid TypeInitializationException
 // This must be set before any PdfSharpCore operations are performed
-GlobalFontSettings.FontResolver = new PdfFontResolver();
+//GlobalFontSettings.FontResolver = new PdfFontResolver();
 
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
@@ -112,21 +112,23 @@ builder.Services.AddApplicationInsightsTelemetry();
 
 
 // ✅ Configure Hangfire with PostgreSQL using the new method
-builder.Services.AddHangfire(config =>
-    config.UsePostgreSqlStorage(options =>
-    {
-      options.UseNpgsqlConnection(connectionString);
-    },
-    new PostgreSqlStorageOptions
-    {
-      SchemaName = "hangfire"
-    }));
+//builder.Services.AddHangfire(config =>
+//    config.UsePostgreSqlStorage(options =>
+//    {
+//      options.UseNpgsqlConnection(connectionString);
+//    },
+//    new PostgreSqlStorageOptions
+//    {
+//      SchemaName = "hangfire"
+//    }));
 
-builder.Services.AddHangfireServer(options => options.WorkerCount = 1); // ✅ Ensures only 1 job runs at a time
+//builder.Services.AddHangfireServer(options => options.WorkerCount = 1); // ✅ Ensures only 1 job runs at a time
 
 
 
 var app = builder.Build();
+// At Program.cs startup
+
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
@@ -198,7 +200,7 @@ using (var scope = app.Services.CreateScope())
     logger.LogError(ex, "An error occurred seeding the DB. {exceptionMessage}", ex.Message);
   }
 }
-app.UseHangfireDashboard();
+//app.UseHangfireDashboard();
 app.Run();
 
 // Make the implicit Program.cs class public, so integration tests can reference the correct assembly for host building

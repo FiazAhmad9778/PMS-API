@@ -21,6 +21,8 @@
     <PackageVersion Include="AWSSDK.S3" Version="3.7.410.12" />
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
     <PackageVersion Include="coverlet.collector" Version="3.2.0" />
+    <PackageVersion Include="Dapper" Version="2.1.35" />
+    <PackageVersion Include="EPPlus" Version="8.4.1" />
     <PackageVersion Include="FastEndpoints" Version="5.8.1" />
     <PackageVersion Include="FastEndpoints.ApiExplorer" Version="2.0.1" />
     <PackageVersion Include="FastEndpoints.Swagger" Version="5.5.0" />
@@ -52,6 +54,7 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.0.13" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.11.0" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Core" Version="3.0.39" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="7.0.4" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0" />
