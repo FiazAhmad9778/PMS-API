@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
@@ -58,6 +58,7 @@ public class GetARDashboardOrganizationsQueryHandler : RequestHandlerBase<GetARD
       var result = organizationList.Select(org => new OrganizationResponseDto
       {
         Id = org.Id,
+        OrganizationExternalId=org.OrganizationExternalId,
         Name = org.Name,
         WardIds = org.Wards.Select(w => w.Id).ToArray(), // Get WardIds from navigation property
         Address = org.Address,

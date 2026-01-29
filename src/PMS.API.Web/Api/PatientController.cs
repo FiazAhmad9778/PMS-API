@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Patients.Commands.AddPatientsByFilter;
@@ -21,6 +21,13 @@ public class PatientController : BaseApiController
   [HttpPost("save")]
   [ProducesResponseType(typeof(ApplicationResult<long>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<long>> Save(CreatePatientCommand request)
+  {
+    return await Mediator.Send(request);
+  }
+
+  [HttpPost("saveFromPMS")]
+  [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<bool>> SaveFromPMS(CreatePatientFromPMSCommand request)
   {
     return await Mediator.Send(request);
   }

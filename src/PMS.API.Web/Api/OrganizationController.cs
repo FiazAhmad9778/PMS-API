@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Organizations.Commands.CreateOrganization;
@@ -25,6 +25,14 @@ public class OrganizationController : BaseApiController
   {
     return await Mediator.Send(request);
   }
+
+  [HttpPost("saveFromPMS")]
+  [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<bool>> SaveFromPMS(CreateOrganizationExternalCommand request)
+  {
+    return await Mediator.Send(request);
+  }
+
 
   [HttpGet("list")]
   [ProducesResponseType(typeof(ApplicationResult<List<OrganizationResponseDto>>), StatusCodes.Status200OK)]

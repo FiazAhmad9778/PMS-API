@@ -8,7 +8,7 @@ namespace PMS.API.Core.Domain.Entities;
 public class Patient : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
 {
   public long Id { get; set; }
-  public string? PatientId { get; set; }
+  public required long PatientId { get; set; }
   public required string Name { get; set; }
   public DateTime CreatedDate { get; set; }
   public string? DefaultEmail { get; set; }

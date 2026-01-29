@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -81,7 +81,7 @@ public class AddPatientsByFilterHandler : RequestHandlerBase<AddPatientsByFilter
 
       // Get ALL existing patient IDs from PostgreSQL to avoid duplicates
       var allExistingPatientIds = await _dbContext.Patient
-        .Where(p => !p.IsDeleted && !string.IsNullOrEmpty(p.PatientId))
+        .Where(p => !p.IsDeleted)
         .Select(p => p.PatientId!)
         .ToHashSetAsync(cancellationToken);
 
@@ -98,17 +98,16 @@ public class AddPatientsByFilterHandler : RequestHandlerBase<AddPatientsByFilter
           {
             while (await reader.ReadAsync(cancellationToken))
             {
-              var patientId = reader.IsDBNull("PatientId") ? null : reader.GetInt32("PatientId").ToString();
+              var patientId = reader.IsDBNull("PatientId") ? (int?)null : reader.GetInt32("PatientId");
 
               // Skip if patient already exists in PostgreSQL
-              if (string.IsNullOrEmpty(patientId) || allExistingPatientIds.Contains(patientId))
+              if (!patientId.HasValue || allExistingPatientIds.Contains(patientId.Value))
               {
                 continue;
               }
-
               var patient = new Patient
               {
-                PatientId = patientId, // External ID from Kroll database (ARID)
+                PatientId = Convert.ToInt64(patientId), // External ID from Kroll database (ARID)
                 Name = reader.IsDBNull("Name") ? string.Empty : reader.GetString("Name"),
                 Address = reader.IsDBNull("Address") ? null : reader.GetString("Address"),
                 DefaultEmail = reader.IsDBNull("DefaultEmail") ? null : reader.GetString("DefaultEmail"),
@@ -118,7 +117,7 @@ public class AddPatientsByFilterHandler : RequestHandlerBase<AddPatientsByFilter
               };
 
               patientsToAdd.Add(patient);
-              allExistingPatientIds.Add(patientId); // Track to avoid duplicates in same batch
+              allExistingPatientIds.Add(Convert.ToInt64(patientId)); // Track to avoid duplicates in same batch
             }
           }
         }

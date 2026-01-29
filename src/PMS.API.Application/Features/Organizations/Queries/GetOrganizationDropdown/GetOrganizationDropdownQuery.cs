@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -94,6 +94,7 @@ public class GetOrganizationDropdownQueryHandler : RequestHandlerBase<GetOrganiz
               {
                 Id = id,
                 Name = reader.IsDBNull("Name") ? string.Empty : reader.GetString("Name"),
+                OrganizationExternalId = id,
                 WardIds = null, // WardIds are stored in PostgreSQL, not in Kroll
                 Address = reader.IsDBNull("Address") ? string.Empty : reader.GetString("Address"),
                 DefaultEmail = reader.IsDBNull("DefaultEmail") ? null : reader.GetString("DefaultEmail"),

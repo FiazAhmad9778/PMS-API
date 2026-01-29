@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -145,7 +145,7 @@ public class GetPatientsQueryHandler : RequestHandlerBase<GetPatientsQuery, Appl
             while (await reader.ReadAsync(cancellationToken))
             {
               var id = reader.IsDBNull("Id") ? 0 : reader.GetInt32("Id");
-              var patientIdValue = reader.IsDBNull("PatientId") ? id.ToString() : reader.GetInt32("PatientId").ToString();
+              var patientIdValue = reader.IsDBNull("PatientId") ? id : reader.GetInt32("PatientId");
               patients.Add(new PatientResponseDto
               {
                 Id = id,

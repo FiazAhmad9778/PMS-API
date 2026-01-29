@@ -9,7 +9,7 @@ public class Ward : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
 {
   public long Id { get; set; }
   public required string Name { get; set; }
-  public string? ExternalId { get; set; }
+  public required long ExternalId { get; set; }
   public long? OrganizationId { get; set; }
   public Organization? Organization { get; set; }
   public DateTime CreatedDate { get; set; }

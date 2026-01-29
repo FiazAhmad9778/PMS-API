@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using PMS.API.Application.Common.BackgroundWorker;
 using PMS.API.Application.Common.Helpers;
 using PMS.API.Application.Identity;
 using PMS.API.Application.Services.Implementation;
@@ -39,6 +40,8 @@ public static class ServiceCollectionExtensions
     services.AddScoped<IPdfService, PdfService>();
     services.AddScoped<IInterFaxService, InterFaxService>();
     services.AddScoped<IOrderFaxService, OrderFaxService>();
+    services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+    services.AddHostedService<QueuedHostedService>();
   }
 
   private static void RegisterData(IServiceCollection services)

@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -127,6 +127,7 @@ public class GetOrganizationsQueryHandler : RequestHandlerBase<GetOrganizationsQ
               organizations.Add(new OrganizationResponseDto
               {
                 Id = id,
+                OrganizationExternalId=id,
                 Name = reader.IsDBNull("Name") ? string.Empty : reader.GetString("Name"),
                 WardIds = null, // WardIds are stored in PostgreSQL, not in Kroll
                 Address = reader.IsDBNull("Address") ? string.Empty : reader.GetString("Address"),

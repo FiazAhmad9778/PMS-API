@@ -1,6 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PMS.API.Application.Common.Helpers;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Invoice.Command;
 using PMS.API.Application.Features.Invoice.DTO;
@@ -10,7 +9,7 @@ using PMS.API.Application.Features.Patients.Commands.ExportOrganizationCharges;
 namespace PMS.API.Web.Api;
 
 [Route("api/[controller]")]
-[AllowAnonymous]
+[Authorize]
 [ApiController]
 public class InvoiceController : BaseApiController
 {
@@ -100,7 +99,6 @@ public class InvoiceController : BaseApiController
     if (!result.Success || result.Data == null)
       return BadRequest(result);
 
-    // Create Excel with both worksheets even if one is empty
     var excelBytes =
         ExcelExportHelper.GenerateOrganizationChargesExcel(
           result.Data.Charges ?? new(),

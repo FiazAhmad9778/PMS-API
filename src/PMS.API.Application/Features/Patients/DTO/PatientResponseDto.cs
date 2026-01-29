@@ -1,9 +1,9 @@
-namespace PMS.API.Application.Features.Patients.DTO;
+﻿namespace PMS.API.Application.Features.Patients.DTO;
 
 public class PatientResponseDto
 {
   public long Id { get; set; }
-  public string? PatientId { get; set; } // External ID from Kroll database (ARID)
+  public long? PatientId { get; set; } // External ID from Kroll database (ARID)
   public required string Name { get; set; }
   public string? Address { get; set; }
   public string? DefaultEmail { get; set; }

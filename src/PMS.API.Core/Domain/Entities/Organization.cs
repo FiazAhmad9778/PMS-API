@@ -8,6 +8,7 @@ namespace PMS.API.Core.Domain.Entities;
 public class Organization : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
 {
   public long Id { get; set; }
+  public required long OrganizationExternalId { get; set; }
   public required string Name { get; set; }
   public required string Address { get; set; }
   public string? DefaultEmail { get; set; }

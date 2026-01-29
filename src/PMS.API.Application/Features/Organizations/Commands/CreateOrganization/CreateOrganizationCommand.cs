@@ -14,6 +14,7 @@ public class CreateOrganizationCommand : IRequest<ApplicationResult<long>>
 {
   [Required]
   public required string Name { get; set; }
+  public required long OrganizationExternalId { get; set; }
 
   public long[]? WardIds { get; set; }
 
@@ -49,10 +50,12 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
       
       if (existingOrganization == null)
       {
+
         // Organization doesn't exist, create it
         var organization = new Organization
         {
           Name = request.Name,
+          OrganizationExternalId=request.OrganizationExternalId,
           Address = string.IsNullOrWhiteSpace(request.Address) ? string.Empty : request.Address,
           DefaultEmail = string.IsNullOrWhiteSpace(request.DefaultEmail) ? null : request.DefaultEmail,
           CreatedDate = DateTime.UtcNow,

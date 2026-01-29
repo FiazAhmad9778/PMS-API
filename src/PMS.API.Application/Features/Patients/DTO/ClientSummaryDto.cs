@@ -1,8 +1,10 @@
-namespace PMS.API.Application.Features.Patients.DTO;
+﻿namespace PMS.API.Application.Features.Patients.DTO;
 
 public class ClientSummaryDto
 {
+  public long PatientId { get; set; }
   public string? PatientName { get; set; }
+  public long WardId { get; set; }
   public string? LocationHome { get; set; }
   public string? SeamLessCode { get; set; }
   public decimal ChargesOnAccount { get; set; }

@@ -51,6 +51,14 @@ public class AppDbContext : IdentityDbContext<User,
   public DbSet<Ward> Ward => Set<Ward>();
 
   #endregion
+
+  #region Invoicing
+
+  public DbSet<PatientInvoiceHistory> PatientInvoiceHistory => Set<PatientInvoiceHistory>();
+  public DbSet<PatientInvoiceHistoryWard> PatientInvoiceHistoryWard => Set<PatientInvoiceHistoryWard>();
+
+
+  #endregion
   public DbSet<PMSErrorLog> PMSErrorLogs => Set<PMSErrorLog>();
 
   protected override void OnModelCreating(ModelBuilder builder)
