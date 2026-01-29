@@ -13,8 +13,10 @@ namespace PMS.API.Web.Api;
 [ApiController]
 public class InvoiceController : BaseApiController
 {
-  public InvoiceController(IServiceProvider serviceProvider) : base(serviceProvider)
+  readonly IWebHostEnvironment _env;
+  public InvoiceController(IServiceProvider serviceProvider, IWebHostEnvironment env) : base(serviceProvider)
   {
+    _env = env;
   }
 
   [HttpPost("generate")]
@@ -99,12 +101,15 @@ public class InvoiceController : BaseApiController
     if (!result.Success || result.Data == null)
       return BadRequest(result);
 
+    var webRootPath = _env.WebRootPath;
+
     var excelBytes =
         ExcelExportHelper.GenerateOrganizationChargesExcel(
           result.Data.Charges ?? new(),
           result.Data.Clients ?? new(),
           command.FromDate,
-          command.ToDate);
+          command.ToDate,
+          webRootPath);
 
     return File(
         excelBytes,

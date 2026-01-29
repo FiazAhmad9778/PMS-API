@@ -41,7 +41,7 @@ public static class ExcelExportHelper
     var range = ws.Range(1, 1, 1, headers.Length);
     range.Style.Font.Bold = true;
     range.Style.Font.FontColor = XLColor.White;
-    range.Style.Fill.BackgroundColor = XLColor.FromArgb(102, 0, 102);
+    range.Style.Fill.BackgroundColor = XLColor.FromArgb(73, 7, 87);
     range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
   }
 
@@ -112,7 +112,7 @@ public static class ExcelExportHelper
     var range = ws.Range(1, 1, 1, headers.Length);
     range.Style.Font.Bold = true;
     range.Style.Font.FontColor = XLColor.White;
-    range.Style.Fill.BackgroundColor = XLColor.FromArgb(102, 0, 102);
+    range.Style.Fill.BackgroundColor = XLColor.FromArgb(73, 7, 87);
     range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
   }
 
@@ -151,20 +151,20 @@ public static class ExcelExportHelper
   // =========================================================
   // =========== ORGANIZATION CHARGES EXCEL ==================
   // =========================================================
-  public static byte[] GenerateOrganizationChargesExcel(List<PatientFinancialResponseDto> chargesData, List<ClientSummaryDto> clientsData, DateTime fromDate, DateTime toDate)
+  public static byte[] GenerateOrganizationChargesExcel(List<PatientFinancialResponseDto> chargesData, List<ClientSummaryDto> clientsData, DateTime fromDate, DateTime toDate,string path)
   {
     using var workbook = new XLWorkbook();
 
     // Create Clients worksheet
     var clientsWs = workbook.Worksheets.Add("Clients");
-    CreateClientsReportHeader(clientsWs, fromDate, toDate);
+    CreateClientsReportHeader(clientsWs, fromDate, toDate, path);
     CreateClientsHeader(clientsWs);
     FillClientsData(clientsWs, clientsData);
     FormatClientsWorksheet(clientsWs);
 
     // Create Charges worksheet
     var chargesWs = workbook.Worksheets.Add("Charges");
-    CreateOrganizationChargesReportHeader(chargesWs, fromDate, toDate);
+    CreateOrganizationChargesReportHeader(chargesWs, fromDate, toDate, path);
     CreateOrganizationChargesHeader(chargesWs);
     FillOrganizationChargesData(chargesWs, chargesData);
     FormatOrganizationChargesWorksheet(chargesWs);
@@ -175,17 +175,18 @@ public static class ExcelExportHelper
   }
 
   // Create report header section (logo, statement title, intro text) for Charges worksheet
-  private static void CreateOrganizationChargesReportHeader(IXLWorksheet ws, DateTime fromDate, DateTime toDate)
+  private static void CreateOrganizationChargesReportHeader(IXLWorksheet ws, DateTime fromDate, DateTime toDate, string path)
   {
-    // Logo and company name (A1-B2)
-    ws.Cell(1, 1).Value = "Seamless Care";
-    ws.Cell(1, 1).Style.Font.FontSize = 16;
-    ws.Cell(1, 1).Style.Font.Bold = true;
-    ws.Cell(1, 1).Style.Font.FontColor = XLColor.FromArgb(102, 0, 102);
-    
-    ws.Cell(2, 1).Value = "Pharmacy";
-    ws.Cell(2, 1).Style.Font.FontSize = 12;
-    ws.Cell(2, 1).Style.Font.FontColor = XLColor.FromArgb(180, 120, 100); // Light brown/beige color
+    // Insert Seamless Care logo image
+    // Make sure the logo image is in your project, e.g., "wwwroot/images/seamlesscare_logo.png"
+    // and its Build Action is "Content" and "Copy to Output Directory" is set to "Copy if newer"
+    var logoPath = Path.Combine(path, "Images", "seamlesscare_logo.png");
+    if (File.Exists(logoPath))
+    {
+      var picture = ws.AddPicture(logoPath)
+                      .MoveTo(ws.Cell(1, 1))  // Position at cell A1
+                      .Scale(0.5);            // Adjust the scale if needed
+    }
 
     // Statement title (D1-F1 merged, purple background)
     var statementRange = ws.Range(1, 4, 1, 6);
@@ -194,7 +195,7 @@ public static class ExcelExportHelper
     statementRange.Value = statementText;
     statementRange.Style.Font.Bold = true;
     statementRange.Style.Font.FontColor = XLColor.White;
-    statementRange.Style.Fill.BackgroundColor = XLColor.FromArgb(102, 0, 102);
+    statementRange.Style.Fill.BackgroundColor = XLColor.FromArgb(73, 7, 87);
     statementRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
     statementRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
@@ -204,18 +205,30 @@ public static class ExcelExportHelper
     ws.Cell(6, 1).Style.Font.Bold = true;
   }
 
+
   // Create report header section for Clients worksheet
-  private static void CreateClientsReportHeader(IXLWorksheet ws, DateTime fromDate, DateTime toDate)
+  private static void CreateClientsReportHeader(IXLWorksheet ws, DateTime fromDate, DateTime toDate, string webRootPath)
   {
-    // Logo and company name (A1-B2)
-    ws.Cell(1, 1).Value = "Seamless Care";
-    ws.Cell(1, 1).Style.Font.FontSize = 16;
-    ws.Cell(1, 1).Style.Font.Bold = true;
-    ws.Cell(1, 1).Style.Font.FontColor = XLColor.FromArgb(102, 0, 102);
-    
-    ws.Cell(2, 1).Value = "Pharmacy";
-    ws.Cell(2, 1).Style.Font.FontSize = 12;
-    ws.Cell(2, 1).Style.Font.FontColor = XLColor.FromArgb(180, 120, 100); // Light brown/beige color
+    // Logo for Clients (instead of "Seamless Care / Pharmacy" text)
+    var logoPath = Path.Combine(webRootPath, "Images", "seamlesscare_logo.png");
+    if (File.Exists(logoPath))
+    {
+      ws.AddPicture(logoPath)
+        .MoveTo(ws.Cell(1, 1))  // Place logo at A1
+        .Scale(0.5);             // Adjust scale if needed
+    }
+    else
+    {
+      // Fallback text if logo not found
+      ws.Cell(1, 1).Value = "Seamless Care";
+      ws.Cell(1, 1).Style.Font.FontSize = 16;
+      ws.Cell(1, 1).Style.Font.Bold = true;
+      ws.Cell(1, 1).Style.Font.FontColor = XLColor.FromArgb(73, 7, 87);
+
+      ws.Cell(2, 1).Value = "Pharmacy";
+      ws.Cell(2, 1).Style.Font.FontSize = 12;
+      ws.Cell(2, 1).Style.Font.FontColor = XLColor.FromArgb(180, 120, 100);
+    }
 
     // Statement title (D1-F1 merged, purple background)
     var statementRange = ws.Range(1, 4, 1, 6);
@@ -224,7 +237,7 @@ public static class ExcelExportHelper
     statementRange.Value = statementText;
     statementRange.Style.Font.Bold = true;
     statementRange.Style.Font.FontColor = XLColor.White;
-    statementRange.Style.Fill.BackgroundColor = XLColor.FromArgb(102, 0, 102);
+    statementRange.Style.Fill.BackgroundColor = XLColor.FromArgb(73, 7, 87); // HEX #490757
     statementRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
     statementRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
@@ -233,6 +246,7 @@ public static class ExcelExportHelper
     ws.Cell(6, 1).Value = "Last Month Charges For Each Patient";
     ws.Cell(6, 1).Style.Font.Bold = true;
   }
+
 
   private static void CreateOrganizationChargesHeader(IXLWorksheet ws)
   {
