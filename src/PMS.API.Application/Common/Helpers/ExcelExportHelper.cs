@@ -1,4 +1,4 @@
-using ClosedXML.Excel;
+﻿using ClosedXML.Excel;
 using PMS.API.Application.Features.Invoice.DTO;
 using PMS.API.Application.Features.Patients.DTO;
 using System.Drawing;
@@ -154,13 +154,6 @@ public static class ExcelExportHelper
   public static byte[] GenerateOrganizationChargesExcel(List<PatientFinancialResponseDto> chargesData, List<ClientSummaryDto> clientsData, DateTime fromDate, DateTime toDate)
   {
     using var workbook = new XLWorkbook();
-    
-    // Create Charges worksheet
-    var chargesWs = workbook.Worksheets.Add("Charges");
-    CreateOrganizationChargesReportHeader(chargesWs, fromDate, toDate);
-    CreateOrganizationChargesHeader(chargesWs);
-    FillOrganizationChargesData(chargesWs, chargesData);
-    FormatOrganizationChargesWorksheet(chargesWs);
 
     // Create Clients worksheet
     var clientsWs = workbook.Worksheets.Add("Clients");
@@ -168,6 +161,13 @@ public static class ExcelExportHelper
     CreateClientsHeader(clientsWs);
     FillClientsData(clientsWs, clientsData);
     FormatClientsWorksheet(clientsWs);
+
+    // Create Charges worksheet
+    var chargesWs = workbook.Worksheets.Add("Charges");
+    CreateOrganizationChargesReportHeader(chargesWs, fromDate, toDate);
+    CreateOrganizationChargesHeader(chargesWs);
+    FillOrganizationChargesData(chargesWs, chargesData);
+    FormatOrganizationChargesWorksheet(chargesWs);
 
     using var ms = new MemoryStream();
     workbook.SaveAs(ms);
