@@ -11,6 +11,7 @@ using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Patients.DTO;
 using PMS.API.Core.Domain.Entities;
 using PMS.API.Infrastructure.Data;
+using PMS.API.Infrastructure.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 
@@ -46,6 +47,7 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
   readonly IBackgroundTaskQueue _backgroundTaskQueue;
   readonly IServiceScopeFactory _scopeFactory;
   readonly AppDbContext _appDbContext;
+  private readonly ICurrentUserService _currentUserService;
 
   public ExportOrganizationChargesCommandHandler(
    IConfiguration configuration,
@@ -53,13 +55,15 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
    ILogger<ExportOrganizationChargesCommandHandler> logger,
    IBackgroundTaskQueue backgroundTaskQueue,
    IServiceScopeFactory scopeFactory,
-   AppDbContext appDbContext)
+   AppDbContext appDbContext,
+   ICurrentUserService currentUserService)
    : base(serviceProvider, logger)
   {
     _configuration = configuration;
     _backgroundTaskQueue = backgroundTaskQueue;
     _scopeFactory = scopeFactory;
     _appDbContext = appDbContext;
+    _currentUserService = currentUserService;
 
     _connectionString = _configuration.GetConnectionString("ARDashboardConnection")
       ?? throw new InvalidOperationException("Connection string 'ARDashboardConnection' not found.");
@@ -314,7 +318,7 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
         IsSent = request.IsSent,
         InvoiceSendingWays = request.InvoiceSendingWays != null && request.InvoiceSendingWays.Any() ?
                               string.Join(",", request.InvoiceSendingWays) : string.Empty,
-        CreatedBy = 1,
+        CreatedBy = _currentUserService.UserId ?? 1,
         PatientInvoiceHistoryWardList = results
               .GroupBy(r => r.WardId)
               .Select(g => new PatientInvoiceHistoryWard
