@@ -92,30 +92,16 @@ public class InvoiceController : BaseApiController
   }
 
   [HttpPost("organizationCharges/excel")]
-  [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
   public async Task<IActionResult> OrganizationChargesExcel(
-      [FromBody] ExportOrganizationChargesCommand command)
+    [FromBody] ExportOrganizationChargesCommand command)
   {
     var result = await Mediator.Send(command);
 
-    if (!result.Success || result.Data == null)
+    if (!result.Success)
       return BadRequest(result);
 
-    var webRootPath = _env.WebRootPath;
-
-    var excelBytes =
-        ExcelExportHelper.GenerateOrganizationChargesExcel(
-          result.Data.Charges ?? new(),
-          result.Data.Clients ?? new(),
-          command.FromDate,
-          command.ToDate,
-          webRootPath);
-
-    return File(
-        excelBytes,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        $"OrganizationCharges_{command.NHID}_{DateTime.UtcNow:yyyyMMdd}.xlsx"
-    );
+    return Ok(new { success = true });
   }
+
 }
 

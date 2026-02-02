@@ -1,6 +1,7 @@
 ﻿using Dapper;
 using MediatR;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using PMS.API.Application.Common.Models;
@@ -29,21 +30,22 @@ public class CreateOrganizationExternalCommandHandler
   }
 
   public async Task<ApplicationResult<bool>> Handle(
-      CreateOrganizationExternalCommand request,
-      CancellationToken cancellationToken)
+     CreateOrganizationExternalCommand request,
+     CancellationToken cancellationToken)
   {
     try
     {
+      // Fetch organization + wards from PMS DB
       var sql = @"
-                SELECT 
-                    nh.ID as OrganizationId,
-                    nh.Name as OrganizationName,
-                    nh.Address1 as Address,
-                    w.ID as WardId,
-                    w.Name as WardName
-                FROM dbo.NH nh
-                LEFT JOIN dbo.NHWard w ON w.NHID = nh.ID
-                WHERE nh.ID = @OrganizationId";
+            SELECT 
+                nh.ID as OrganizationId,
+                nh.Name as OrganizationName,
+                nh.Address1 as Address,
+                w.ID as WardId,
+                w.Name as WardName
+            FROM dbo.NH nh
+            LEFT JOIN dbo.NHWard w ON w.NHID = nh.ID
+            WHERE nh.ID = @OrganizationId";
 
       if (request.WardIds != null && request.WardIds.Any())
       {
@@ -52,7 +54,6 @@ public class CreateOrganizationExternalCommandHandler
 
       using var connection = new SqlConnection(
           _configuration.GetConnectionString("ARDashboardConnection"));
-
       await connection.OpenAsync(cancellationToken);
 
       var data = (await connection.QueryAsync<dynamic>(
@@ -63,7 +64,39 @@ public class CreateOrganizationExternalCommandHandler
       if (!data.Any())
         return ApplicationResult<bool>.Error("No organization/wards found in PMS DB.");
 
-      var organizationEntity = new Organization
+      // Check if organization already exists in our DB
+      var organizationEntity = await _dbContext.Organization
+          .Include(o => o.Wards)
+          .FirstOrDefaultAsync(o => o.OrganizationExternalId == request.OrganizationId, cancellationToken);
+
+      if (organizationEntity != null)
+      {
+        // Organization exists: check for new wards
+        var existingWardIds = organizationEntity.Wards.Select(w => w.ExternalId).ToHashSet();
+
+        var newWards = data
+            .Where(d => d.WardId != null && !existingWardIds.Contains((long)d.WardId))
+            .Select(d => new Ward
+            {
+              ExternalId = d.WardId,
+              Name = d.WardName,
+              OrganizationId = organizationEntity.Id,
+              CreatedDate = DateTime.UtcNow
+            }).ToList();
+
+        if (!newWards.Any())
+        {
+          return ApplicationResult<bool>.Error("Organization already exists with the same wards.");
+        }
+
+        organizationEntity.Wards.AddRange(newWards);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return ApplicationResult<bool>.SuccessResult(true);
+      }
+
+      // Organization does not exist: create new
+      organizationEntity = new Organization
       {
         OrganizationExternalId = request.OrganizationId,
         Name = data.FirstOrDefault()?.OrganizationName ?? string.Empty,
@@ -77,7 +110,7 @@ public class CreateOrganizationExternalCommandHandler
         {
           organizationEntity.Wards.Add(new Ward
           {
-            ExternalId=Convert.ToString(row.WardId),
+            ExternalId = row.WardId,
             Name = row.WardName,
             OrganizationId = organizationEntity.Id,
             CreatedDate = DateTime.UtcNow
@@ -96,5 +129,6 @@ public class CreateOrganizationExternalCommandHandler
           new[] { "Failed to save organization and wards." }, ex);
     }
   }
+
 }
 

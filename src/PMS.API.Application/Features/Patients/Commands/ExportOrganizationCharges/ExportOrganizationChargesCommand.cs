@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using Dapper;
+using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,24 +25,24 @@ public class ExportOrganizationChargesResponse
   public List<ClientSummaryDto> Clients { get; set; } = new();
 }
 
-public class ExportOrganizationChargesCommand : IRequest<ApplicationResult<ExportOrganizationChargesResponse>>
+public class ExportOrganizationChargesCommand
+    : IRequest<ApplicationResult<bool>>
 {
-  public long? NHID { get; set; }
-  public long? PatientId { get; set; }
-
-  //public List<long> NHID { get; set; } = new List<long>();
-  //public List<long> PatientId { get; set; } = new List<long>();
+  public List<long>? OrganizationIds { get; set; }
+  public List<long>? PatientIds { get; set; }
 
   [Required]
   public DateTime FromDate { get; set; }
 
   [Required]
   public DateTime ToDate { get; set; }
-  public bool IsSent { get; set; } = false;
+
+  public bool IsSent { get; set; }
   public int[]? InvoiceSendingWays { get; set; }
 }
 
-public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<ExportOrganizationChargesCommand, ApplicationResult<ExportOrganizationChargesResponse>>
+
+public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<ExportOrganizationChargesCommand, ApplicationResult<bool>>
 {
   readonly IConfiguration _configuration;
   readonly string _connectionString;
@@ -76,265 +77,327 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
     _databaseName = ConnectionStringHelper.ExtractDatabaseName(_connectionString);
   }
 
-  protected override async Task<ApplicationResult<ExportOrganizationChargesResponse>> HandleRequest(ExportOrganizationChargesCommand request, CancellationToken cancellationToken)
+  protected override async Task<ApplicationResult<bool>> HandleRequest(
+     ExportOrganizationChargesCommand request,
+     CancellationToken cancellationToken)
   {
-    try
+    if (request.FromDate > request.ToDate)
+      return ApplicationResult<bool>.Error("FromDate cannot be greater than ToDate.");
+
+    if ((request.OrganizationIds == null || !request.OrganizationIds.Any()) &&
+        (request.PatientIds == null || !request.PatientIds.Any()))
+      return ApplicationResult<bool>.Error("OrganizationIds or PatientIds required.");
+
+    if (request.OrganizationIds?.Any() == true)
     {
-      if (request.FromDate > request.ToDate)
+      foreach (var organizationId in request.OrganizationIds)
       {
-        return ApplicationResult<ExportOrganizationChargesResponse>.Error("FromDate cannot be greater than ToDate.");
+        await ProcessOrganizationInvoice(
+            organizationId, request, cancellationToken);
       }
-
-      string wardFilterCondition = string.Empty;
-      List<long> wardIds = new List<long>();
-      if (request.NHID is not null)
+    }
+    else
+    {
+      foreach (var patientId in request.PatientIds!)
       {
-        wardIds = await _appDbContext.Ward.AsQueryable().Where(_ => _.OrganizationId == request.NHID).Select(_ => _.Id).ToListAsync();
-        if (wardIds == null || !wardIds.Any())
-        {
-          wardFilterCondition = "";
-        }
-        else
-        {
-          wardFilterCondition = "AND w.ID IN (SELECT CAST(value AS INT) FROM STRING_SPLIT(@WardIds, ','))";
-        }
+        await ProcessPatientInvoice(
+            patientId, request, cancellationToken);
       }
+    }
 
-      var query = $@"
+    return ApplicationResult<bool>.SuccessResult(true);
+  }
+
+  private async Task ProcessOrganizationInvoice(
+    long organizationId,
+    ExportOrganizationChargesCommand request,
+    CancellationToken ct)
+  {
+    var externalOrganizationId = await _appDbContext.Organization.Where(x => x.OrganizationExternalId == organizationId).Select(x => x.Id).FirstOrDefaultAsync();
+    var wardIds = await _appDbContext.Ward
+        .Where(w => w.OrganizationId == externalOrganizationId)
+        .Select(w => w.ExternalId)
+        .ToListAsync(ct);
+
+    if (!wardIds.Any())
+      return;
+
+    var (charges, clients) =
+        await FetchChargesByWardIds(wardIds, request, ct);
+
+    if (!charges.Any())
+      return;
+
+    var exists = await _appDbContext.PatientInvoiceHistory
+        .AnyAsync(h =>
+            h.OrganizationId == organizationId &&
+            h.InvoiceStartDate <= request.ToDate &&
+            h.InvoiceEndDate >= request.FromDate,
+            ct);
+
+    if (exists)
+      throw new InvalidOperationException("Invoice already exists.");
+
+    var filePath = SaveExcelFile(
+        charges, clients, $"ORG_{organizationId}", request);
+
+    await CreateInvoiceHistoryForOrganization(
+        organizationId,
+        wardIds,
+        charges,
+        filePath,
+        request,
+        ct);
+  }
+
+
+  private async Task ProcessPatientInvoice(
+    long patientId,
+    ExportOrganizationChargesCommand request,
+    CancellationToken ct)
+  {
+    var (charges, clients) =
+        await FetchChargesByPatientId(patientId, request, ct);
+
+    if (!charges.Any())
+      return;
+
+    var filePath = SaveExcelFile(
+        charges, clients, $"PAT_{patientId}", request);
+
+    var history = new PatientInvoiceHistory
+    {
+      PatientId = patientId,
+      InvoiceStartDate = request.FromDate,
+      InvoiceEndDate = request.ToDate,
+      FilePath = filePath,
+      IsSent = request.IsSent,
+      InvoiceSendingWays = request.InvoiceSendingWays != null
+            ? string.Join(",", request.InvoiceSendingWays)
+            : null,
+      CreatedBy = _currentUserService.UserId,
+      CreatedDate = DateTime.UtcNow
+    };
+
+    _appDbContext.PatientInvoiceHistory.Add(history);
+    await _appDbContext.SaveChangesAsync(ct);
+  }
+
+
+
+  private async Task<(List<PatientFinancialResponseDto>, List<ClientSummaryDto>)>
+ FetchChargesByWardIds(
+     List<long> wardIds,
+     ExportOrganizationChargesCommand request,
+     CancellationToken ct)
+  {
+    if (wardIds == null || !wardIds.Any())
+      return (new(), new());
+
+    var wardIdsCsv = string.Join(",", wardIds);
+
+    var chargesQuery = $@"
         SELECT
-          p.ID AS PatientId,
-          w.ID AS WardId,
-
-          ad.[Date] AS [Date],
-          p.LastName + ', ' + p.FirstName AS PatientName,
-          p.Address1 AS [Your Code],
-          ar.AccountNum AS [Seam Code],
-          ad.Comment AS ChargeDescription,
-          CASE ad.TaxType
-              WHEN 0 THEN 'Exempt'
-              WHEN 4 THEN 'HST'
-              ELSE 'Other'
-          END AS TaxType,
-          ad.Amount AS Amount
-
+            p.ID AS PatientId,
+            w.ID AS WardId,
+            ad.[Date],
+            p.LastName + ', ' + p.FirstName AS PatientName,
+            ar.AccountNum AS SeamCode,
+            ad.Comment AS ChargeDescription,
+            ad.Amount
         FROM [{_databaseName}].dbo.NHWard w
-        JOIN [{_databaseName}].dbo.Pat p
-            ON p.NHWardID = w.ID
-        JOIN [{_databaseName}].dbo.AR ar
-            ON ar.BillToPatID = p.ID
-        JOIN [{_databaseName}].dbo.ARDetail ad
-            ON ad.ARID = ar.ID
-           AND ad.PatID = p.ID
-
+        JOIN [{_databaseName}].dbo.Pat p ON p.NHWardID = w.ID
+        JOIN [{_databaseName}].dbo.AR ar ON ar.BillToPatID = p.ID
+        JOIN [{_databaseName}].dbo.ARDetail ad ON ad.ARID = ar.ID
         WHERE
-            -- Paid / Posted ARs only
-            EXISTS (
+            w.ID IN (
+                SELECT CAST(value AS BIGINT)
+                FROM STRING_SPLIT(@WardIds, ',')
+            )
+            AND ad.[Date] >= @FromDate
+            AND ad.[Date] < DATEADD(DAY, 1, @ToDate)
+            AND EXISTS (
                 SELECT 1
                 FROM [{_databaseName}].dbo.ARPayment ap
                 WHERE ap.ARID = ar.ID
                   AND ap.Status IN (1, 2)
-            )
-            AND w.NHID = @NHID
+            );";
 
-            {wardFilterCondition}
-
-            -- Date range
-            AND ad.[Date] >= @FromDate
-            AND ad.[Date] < DATEADD(DAY, 1, @ToDate)
-
-        ORDER BY
-            ad.[Date],
-            p.LastName,
-            p.FirstName";
-
-      var results = new List<PatientFinancialResponseDto>();
-
-      var clientSummaryQuery = $@"
+    var clientSummaryQuery = $@"
         SELECT
-            p.Id AS PatientId,
-            p.LastName + ', ' + p.FirstName AS PatientName,
-            w.Id as WardId,
+            w.ID AS WardId,
             w.Name AS LocationHome,
-            ar.AccountNum AS SeamLessCode,
+            COUNT(DISTINCT p.ID) AS PatientCount,
             SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
             SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
-            CAST(SUM(ISNULL(ai.PaymentPending, 0)) AS NUMERIC(18,2)) AS PaymentsMade,
+            SUM(ISNULL(ai.PaymentPending, 0)) AS PaymentsMade,
             SUM(ISNULL(ai.Paid, 0)) AS OutstandingCharges
         FROM [{_databaseName}].dbo.NHWard w
-        INNER JOIN [{_databaseName}].dbo.Pat p ON p.NHWardID = w.ID
-        INNER JOIN [{_databaseName}].dbo.AR ar ON ar.BillToPatId = p.ID
-        INNER JOIN [{_databaseName}].dbo.ARInvoice ai ON ai.ARID = ar.ID
+        JOIN [{_databaseName}].dbo.Pat p ON p.NHWardID = w.ID
+        JOIN [{_databaseName}].dbo.AR ar ON ar.BillToPatID = p.ID
+        JOIN [{_databaseName}].dbo.ARInvoice ai ON ai.ARID = ar.ID
         WHERE
-            w.NHID = @NHID
-            {wardFilterCondition}
+            w.ID IN (
+                SELECT CAST(value AS BIGINT)
+                FROM STRING_SPLIT(@WardIds, ',')
+            )
             AND ai.InvoiceDate >= @FromDate
             AND ai.InvoiceDate < DATEADD(DAY, 1, @ToDate)
         GROUP BY
-            p.Id,        
-            p.LastName,
-            p.FirstName,
-            w.Id,        
-            w.Name,
-            ar.AccountNum
+            w.ID, w.Name;";
 
-        ORDER BY
-            p.LastName,
-            p.FirstName";
+    using var connection = new SqlConnection(_connectionString);
+    await connection.OpenAsync(ct);
 
-      var clientResults = new List<ClientSummaryDto>();
-
-      using (var connection = new SqlConnection(_connectionString))
-      {
-        await connection.OpenAsync(cancellationToken);
-
-        using (var command = new SqlCommand(query, connection))
+    var charges = (await connection.QueryAsync<PatientFinancialResponseDto>(
+        chargesQuery,
+        new
         {
-          command.Parameters.AddWithValue("@NHID", request.NHID);
+          WardIds = wardIdsCsv,
+          request.FromDate,
+          request.ToDate
+        })).ToList();
 
-          var wardIdsParam = new SqlParameter("@WardIds", SqlDbType.NVarChar);
-          if (wardIds != null && wardIds.Any())
-          {
-            wardIdsParam.Value = string.Join(",", wardIds);
-          }
-          else
-          {
-            wardIdsParam.Value = DBNull.Value;
-          }
-          command.Parameters.Add(wardIdsParam);
-
-          command.Parameters.AddWithValue("@FromDate", request.FromDate);
-          command.Parameters.AddWithValue("@ToDate", request.ToDate);
-
-          using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-          {
-            while (await reader.ReadAsync(cancellationToken))
-            {
-              results.Add(new PatientFinancialResponseDto
-              {
-                PatientId = reader.IsDBNull("PatientId") ? 0 : reader.GetInt32("PatientId"),
-                WardId = reader.IsDBNull("WardId") ? 0 : reader.GetInt32("WardId"),
-                Date = reader.IsDBNull("Date") ? DateTime.MinValue : reader.GetDateTime("Date"),
-                PatientName = reader.IsDBNull("PatientName") ? string.Empty : reader.GetString("PatientName"),
-                YourCode = reader.IsDBNull("Your Code") ? null : reader.GetString("Your Code"),
-                SeamCode = reader.IsDBNull("Seam Code") ? null : reader.GetString("Seam Code"),
-                ChargeDescription = reader.IsDBNull("ChargeDescription") ? null : reader.GetString("ChargeDescription"),
-                TaxType = reader.IsDBNull("TaxType") ? string.Empty : reader.GetString("TaxType"),
-                Amount = reader.IsDBNull("Amount") ? 0 : reader.GetDecimal("Amount")
-              });
-            }
-          }
-        }
-
-        var exists = await IsInvoiceExist(request, results);
-
-        if (exists)
-          return ApplicationResult<ExportOrganizationChargesResponse>.Error("Invoice already exists for the selected date range.");
-
-        using (var command = new SqlCommand(clientSummaryQuery, connection))
+    var clients = (await connection.QueryAsync<ClientSummaryDto>(
+        clientSummaryQuery,
+        new
         {
-          command.Parameters.AddWithValue("@NHID", request.NHID);
+          WardIds = wardIdsCsv,
+          request.FromDate,
+          request.ToDate
+        })).ToList();
 
-          var wardIdsParam = new SqlParameter("@WardIds", SqlDbType.NVarChar);
-          if (wardIds != null && wardIds.Any())
-          {
-            wardIdsParam.Value = string.Join(",", wardIds);
-          }
-          else
-          {
-            wardIdsParam.Value = DBNull.Value;
-          }
-          command.Parameters.Add(wardIdsParam);
+    return (charges, clients);
+  }
 
-          command.Parameters.AddWithValue("@FromDate", request.FromDate);
-          command.Parameters.AddWithValue("@ToDate", request.ToDate);
 
-          using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-          {
-            while (await reader.ReadAsync(cancellationToken))
+  private string SaveExcelFile(
+      List<PatientFinancialResponseDto> charges,
+      List<ClientSummaryDto> clients,
+      string prefix,
+      ExportOrganizationChargesCommand request)
+  {
+    var folder = Path.Combine("wwwroot", "Invoices");
+    Directory.CreateDirectory(folder);
+
+    var fileName =
+        $"{prefix}_{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx";
+
+    var fullPath = Path.Combine(folder, fileName);
+
+    var bytes = ExcelExportHelper.GenerateOrganizationChargesExcel(
+        charges, clients, request.FromDate, request.ToDate, folder);
+
+    File.WriteAllBytes(fullPath, bytes);
+
+    return $"Invoices/{fileName}";
+  }
+  private async Task CreateInvoiceHistoryForOrganization(
+      long organizationId,
+      List<long> wardIds,
+      List<PatientFinancialResponseDto> charges,
+      string filePath,
+      ExportOrganizationChargesCommand request,
+      CancellationToken ct)
+  {
+    var history = new PatientInvoiceHistory
+    {
+      OrganizationId = organizationId,
+      InvoiceStartDate = request.FromDate,
+      InvoiceEndDate = request.ToDate,
+      FilePath = filePath,
+      IsSent = request.IsSent,
+      InvoiceSendingWays = request.InvoiceSendingWays != null
+            ? string.Join(",", request.InvoiceSendingWays)
+            : null,
+      CreatedBy = _currentUserService.UserId,
+      PatientInvoiceHistoryWardList = charges
+            .GroupBy(x => x.WardId)
+            .Select(g => new PatientInvoiceHistoryWard
             {
-              clientResults.Add(new ClientSummaryDto
-              {
-                PatientId = reader.IsDBNull("PatientId") ? 0 : reader.GetInt32("PatientId"),
-                PatientName = reader.IsDBNull("PatientName") ? null : reader.GetString("PatientName"),
-                WardId = reader.IsDBNull("WardId") ? 0 : reader.GetInt32("WardId"),
-                LocationHome = reader.IsDBNull("LocationHome") ? null : reader.GetString("LocationHome"),
-                SeamLessCode = reader.IsDBNull("SeamLessCode") ? null : reader.GetString("SeamLessCode"),
-                ChargesOnAccount = reader.IsDBNull("ChargesOnAccount") ? 0 : reader.GetDecimal("ChargesOnAccount"),
-                TaxIncluded = reader.IsDBNull("TaxIncluded") ? 0 : reader.GetDecimal("TaxIncluded"),
-                PaymentsMade = reader.IsDBNull("PaymentsMade") ? 0 : reader.GetDecimal("PaymentsMade"),
-                OutstandingCharges = reader.IsDBNull("OutstandingCharges") ? 0 : reader.GetDecimal("OutstandingCharges")
-              });
-            }
-          }
-        }
-      }
+              WardId = g.Key,
+              PatientIds = string.Join(",", g.Select(x => x.PatientId).Distinct())
+            }).ToList()
+    };
 
-      var response = new ExportOrganizationChargesResponse
-      {
-        Charges = results,
-        Clients = clientResults
-      };
-
-      if (results.Any())
-        CreateInvoiceHistory(request, results);
-
-      return ApplicationResult<ExportOrganizationChargesResponse>.SuccessResult(response!, results.Count + clientResults.Count);
-    }
-    catch (Exception ex)
-    {
-      return ApplicationResult<ExportOrganizationChargesResponse>.Error($"Error fetching organization charges: {ex.Message}");
-    }
+    _appDbContext.PatientInvoiceHistory.Add(history);
+    await _appDbContext.SaveChangesAsync(ct);
   }
 
-  private async Task<bool> IsInvoiceExist(ExportOrganizationChargesCommand request, List<PatientFinancialResponseDto> results)
+  private async Task<(List<PatientFinancialResponseDto>, List<ClientSummaryDto>)>
+FetchChargesByPatientId(
+    long patientId,
+    ExportOrganizationChargesCommand request,
+    CancellationToken ct)
   {
-    var wardIds = results.Select(r => r.WardId).Distinct().ToList();
+    var chargesQuery = $@"
+        SELECT
+            p.ID AS PatientId,
+            w.ID AS WardId,
+            ad.[Date],
+            p.LastName + ', ' + p.FirstName AS PatientName,
+            ar.AccountNum AS SeamCode,
+            ad.Comment AS ChargeDescription,
+            ad.Amount
+        FROM [{_databaseName}].dbo.Pat p
+        LEFT JOIN [{_databaseName}].dbo.NHWard w ON w.ID = p.NHWardID
+        JOIN [{_databaseName}].dbo.AR ar ON ar.BillToPatID = p.ID
+        JOIN [{_databaseName}].dbo.ARDetail ad ON ad.ARID = ar.ID
+        WHERE
+            p.ID = @PatientId
+            AND ad.[Date] >= @FromDate
+            AND ad.[Date] < DATEADD(DAY, 1, @ToDate)
+            AND EXISTS (
+                SELECT 1
+                FROM [{_databaseName}].dbo.ARPayment ap
+                WHERE ap.ARID = ar.ID
+                  AND ap.Status IN (1, 2)
+            );";
 
-    var exists = await _appDbContext.PatientInvoiceHistory
-        .AnyAsync(h =>
-            h.OrganizationId == request.NHID &&
+    var clientSummaryQuery = $@"
+        SELECT
+            p.ID AS PatientId,
+            ISNULL(w.ID, 0) AS WardId,
+            ISNULL(w.Name, 'N/A') AS LocationHome,
+            COUNT(DISTINCT ar.ID) AS InvoiceCount,
+            SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
+            SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
+            SUM(ISNULL(ai.PaymentPending, 0)) AS PaymentsMade,
+            SUM(ISNULL(ai.Paid, 0)) AS OutstandingCharges
+        FROM [{_databaseName}].dbo.Pat p
+        LEFT JOIN [{_databaseName}].dbo.NHWard w ON w.ID = p.NHWardID
+        JOIN [{_databaseName}].dbo.AR ar ON ar.BillToPatID = p.ID
+        JOIN [{_databaseName}].dbo.ARInvoice ai ON ai.ARID = ar.ID
+        WHERE
+            p.ID = @PatientId
+            AND ai.InvoiceDate >= @FromDate
+            AND ai.InvoiceDate < DATEADD(DAY, 1, @ToDate)
+        GROUP BY
+            p.ID, w.ID, w.Name;";
 
-            // Date range overlap check
-            h.InvoiceStartDate <= request.ToDate &&
-            h.InvoiceEndDate >= request.FromDate &&
+    using var connection = new SqlConnection(_connectionString);
+    await connection.OpenAsync(ct);
 
-            h.PatientInvoiceHistoryWardList
-                .Any(w => wardIds.Contains(w.WardId))
-        );
-    return exists;
+    var charges = (await connection.QueryAsync<PatientFinancialResponseDto>(
+        chargesQuery,
+        new
+        {
+          PatientId = patientId,
+          request.FromDate,
+          request.ToDate
+        })).ToList();
+
+    var clientSummary = (await connection.QueryAsync<ClientSummaryDto>(
+        clientSummaryQuery,
+        new
+        {
+          PatientId = patientId,
+          request.FromDate,
+          request.ToDate
+        })).ToList();
+
+    return (charges, clientSummary);
   }
 
-  private void CreateInvoiceHistory(ExportOrganizationChargesCommand request, List<PatientFinancialResponseDto> results)
-  {
-    _backgroundTaskQueue.QueueBackgroundWorkItem(async ct =>
-    {
-      using var scope = _scopeFactory.CreateScope();
-      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-
-
-      var history = new PatientInvoiceHistory
-      {
-        OrganizationId = request!.NHID!.Value,
-        InvoiceStartDate = request.FromDate,
-        InvoiceEndDate = request.ToDate,
-        FilePath = string.Empty,
-        IsSent = request.IsSent,
-        InvoiceSendingWays = request.InvoiceSendingWays != null && request.InvoiceSendingWays.Any() ?
-                              string.Join(",", request.InvoiceSendingWays) : string.Empty,
-        CreatedBy = 1,//_currentUserService.UserId ?? 1,
-        PatientInvoiceHistoryWardList = results
-              .GroupBy(r => r.WardId)
-              .Select(g => new PatientInvoiceHistoryWard
-              {
-                WardId = g.Key,
-                PatientIds = string.Join(",", g.Select(x => x.PatientId).Distinct())
-              })
-              .ToList()
-      };
-
-      db.PatientInvoiceHistory.Add(history);
-      await db.SaveChangesAsync(ct);
-    });
-  }
 }
