@@ -9,21 +9,21 @@ using System.Data;
 
 namespace PMS.API.Application.Features.Organizations.Queries.GetOrganizationDropdown;
 
-public class GetOrganizationDropdownQuery : IRequest<ApplicationResult<List<OrganizationResponseDto>>>
+public class GetOrganizationFromPMSDropdownQuery : IRequest<ApplicationResult<List<OrganizationResponseDto>>>
 {
   public string? SearchKeyword { get; set; }
 }
 
-public class GetOrganizationDropdownQueryHandler : RequestHandlerBase<GetOrganizationDropdownQuery, ApplicationResult<List<OrganizationResponseDto>>>
+public class GetOrganizationFromPMSDropdownQueryHandler : RequestHandlerBase<GetOrganizationFromPMSDropdownQuery, ApplicationResult<List<OrganizationResponseDto>>>
 {
   private readonly IConfiguration _configuration;
   private readonly string _connectionString;
   private readonly string _databaseName;
 
-  public GetOrganizationDropdownQueryHandler(
+  public GetOrganizationFromPMSDropdownQueryHandler(
     IConfiguration configuration,
     IServiceProvider serviceProvider,
-    ILogger<GetOrganizationDropdownQueryHandler> logger) : base(serviceProvider, logger)
+    ILogger<GetOrganizationFromPMSDropdownQueryHandler> logger) : base(serviceProvider, logger)
   {
     _configuration = configuration;
     _connectionString = _configuration.GetConnectionString("ARDashboardConnection")
@@ -43,7 +43,7 @@ public class GetOrganizationDropdownQueryHandler : RequestHandlerBase<GetOrganiz
     return connectionString.Substring(startIndex, endIndex - startIndex).Trim();
   }
 
-  protected override async Task<ApplicationResult<List<OrganizationResponseDto>>> HandleRequest(GetOrganizationDropdownQuery request, CancellationToken cancellationToken)
+  protected override async Task<ApplicationResult<List<OrganizationResponseDto>>> HandleRequest(GetOrganizationFromPMSDropdownQuery request, CancellationToken cancellationToken)
   {
     try
     {

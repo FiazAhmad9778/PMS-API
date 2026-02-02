@@ -10,6 +10,7 @@ using PMS.API.Application.Common.ConectionStringHelper;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Patients.DTO;
 using PMS.API.Core.Domain.Entities;
+using PMS.API.Core.Domain.Interfaces;
 using PMS.API.Infrastructure.Data;
 using PMS.API.Infrastructure.Interfaces;
 using System.ComponentModel.DataAnnotations;
@@ -25,10 +26,11 @@ public class ExportOrganizationChargesResponse
 
 public class ExportOrganizationChargesCommand : IRequest<ApplicationResult<ExportOrganizationChargesResponse>>
 {
-  [Required]
-  public int NHID { get; set; }
+  public long? NHID { get; set; }
+  public long? PatientId { get; set; }
 
-  public List<int>? WardIds { get; set; }
+  //public List<long> NHID { get; set; } = new List<long>();
+  //public List<long> PatientId { get; set; } = new List<long>();
 
   [Required]
   public DateTime FromDate { get; set; }
@@ -47,7 +49,8 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
   readonly IBackgroundTaskQueue _backgroundTaskQueue;
   readonly IServiceScopeFactory _scopeFactory;
   readonly AppDbContext _appDbContext;
-  private readonly ICurrentUserService _currentUserService;
+  readonly ICurrentUserService _currentUserService;
+  readonly IRepository<Ward> _wardRepo;
 
   public ExportOrganizationChargesCommandHandler(
    IConfiguration configuration,
@@ -56,7 +59,8 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
    IBackgroundTaskQueue backgroundTaskQueue,
    IServiceScopeFactory scopeFactory,
    AppDbContext appDbContext,
-   ICurrentUserService currentUserService)
+   ICurrentUserService currentUserService,
+   IRepository<Ward> wardRepo)
    : base(serviceProvider, logger)
   {
     _configuration = configuration;
@@ -64,6 +68,7 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
     _scopeFactory = scopeFactory;
     _appDbContext = appDbContext;
     _currentUserService = currentUserService;
+    _wardRepo = wardRepo;
 
     _connectionString = _configuration.GetConnectionString("ARDashboardConnection")
       ?? throw new InvalidOperationException("Connection string 'ARDashboardConnection' not found.");
@@ -80,14 +85,19 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
         return ApplicationResult<ExportOrganizationChargesResponse>.Error("FromDate cannot be greater than ToDate.");
       }
 
-      string wardFilterCondition;
-      if (request.WardIds == null || !request.WardIds.Any())
+      string wardFilterCondition = string.Empty;
+      List<long> wardIds = new List<long>();
+      if (request.NHID is not null)
       {
-        wardFilterCondition = "";
-      }
-      else
-      {
-        wardFilterCondition = "AND w.ID IN (SELECT CAST(value AS INT) FROM STRING_SPLIT(@WardIds, ','))";
+        wardIds = await _appDbContext.Ward.AsQueryable().Where(_ => _.OrganizationId == request.NHID).Select(_ => _.Id).ToListAsync();
+        if (wardIds == null || !wardIds.Any())
+        {
+          wardFilterCondition = "";
+        }
+        else
+        {
+          wardFilterCondition = "AND w.ID IN (SELECT CAST(value AS INT) FROM STRING_SPLIT(@WardIds, ','))";
+        }
       }
 
       var query = $@"
@@ -107,7 +117,6 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
           END AS TaxType,
           ad.Amount AS Amount
 
-
         FROM [{_databaseName}].dbo.NHWard w
         JOIN [{_databaseName}].dbo.Pat p
             ON p.NHWardID = w.ID
@@ -125,11 +134,8 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
                 WHERE ap.ARID = ar.ID
                   AND ap.Status IN (1, 2)
             )
-
-            -- NH filter (via NHWard) - Required
             AND w.NHID = @NHID
 
-            -- Ward filter (multiple wards support)
             {wardFilterCondition}
 
             -- Date range
@@ -186,9 +192,9 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
           command.Parameters.AddWithValue("@NHID", request.NHID);
 
           var wardIdsParam = new SqlParameter("@WardIds", SqlDbType.NVarChar);
-          if (request.WardIds != null && request.WardIds.Any())
+          if (wardIds != null && wardIds.Any())
           {
-            wardIdsParam.Value = string.Join(",", request.WardIds);
+            wardIdsParam.Value = string.Join(",", wardIds);
           }
           else
           {
@@ -229,9 +235,9 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
           command.Parameters.AddWithValue("@NHID", request.NHID);
 
           var wardIdsParam = new SqlParameter("@WardIds", SqlDbType.NVarChar);
-          if (request.WardIds != null && request.WardIds.Any())
+          if (wardIds != null && wardIds.Any())
           {
-            wardIdsParam.Value = string.Join(",", request.WardIds);
+            wardIdsParam.Value = string.Join(",", wardIds);
           }
           else
           {
@@ -276,8 +282,6 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
     }
     catch (Exception ex)
     {
-      Logger.LogError(ex, "Error fetching organization charges from Pharmacy database. NHID: {NHID}, WardIds: {WardIds}",
-       request.NHID, request.WardIds != null ? string.Join(",", request.WardIds) : "null");
       return ApplicationResult<ExportOrganizationChargesResponse>.Error($"Error fetching organization charges: {ex.Message}");
     }
   }
@@ -311,14 +315,14 @@ public class ExportOrganizationChargesCommandHandler : RequestHandlerBase<Export
 
       var history = new PatientInvoiceHistory
       {
-        OrganizationId = request.NHID,
+        OrganizationId = request!.NHID!.Value,
         InvoiceStartDate = request.FromDate,
         InvoiceEndDate = request.ToDate,
         FilePath = string.Empty,
         IsSent = request.IsSent,
         InvoiceSendingWays = request.InvoiceSendingWays != null && request.InvoiceSendingWays.Any() ?
                               string.Join(",", request.InvoiceSendingWays) : string.Empty,
-        CreatedBy = _currentUserService.UserId ?? 1,
+        CreatedBy = 1,//_currentUserService.UserId ?? 1,
         PatientInvoiceHistoryWardList = results
               .GroupBy(r => r.WardId)
               .Select(g => new PatientInvoiceHistoryWard

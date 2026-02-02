@@ -1,151 +1,148 @@
-﻿using System.Data;
-using MediatR;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
+﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Organizations.DTO;
+using PMS.API.Core.Domain.Entities;
 using PMS.API.Core.DTOs.Base;
+using PMS.API.Infrastructure.Data;
 
 namespace PMS.API.Application.Features.Organizations.Queries.GetOrganizations;
-
 public class GetOrganizationsQuery : PagedQueryBaseRequest, IRequest<ApplicationResult<List<OrganizationResponseDto>>>
 {
 }
 
 public class GetOrganizationsQueryHandler : RequestHandlerBase<GetOrganizationsQuery, ApplicationResult<List<OrganizationResponseDto>>>
 {
-  private readonly IConfiguration _configuration;
-  private readonly string _connectionString;
-  private readonly string _databaseName;
-
-  public GetOrganizationsQueryHandler(
-    IConfiguration configuration,
-    IServiceProvider serviceProvider,
-    ILogger<GetOrganizationsQueryHandler> logger) : base(serviceProvider, logger)
+  readonly AppDbContext _appDbContext;
+  public GetOrganizationsQueryHandler(IServiceProvider serviceProvider,
+     ILogger<GetOrganizationsQueryHandler> logger,
+    AppDbContext appDbContext) : base(serviceProvider, logger)
   {
-    _configuration = configuration;
-    // Use ARDashboardConnection for SQL Server (Pharmacy database is on SQL Server)
-    _connectionString = _configuration.GetConnectionString("ARDashboardConnection")
-      ?? throw new InvalidOperationException("Connection string 'ARDashboardConnection' not found.");
-    _databaseName = ExtractDatabaseName(_connectionString);
+    _appDbContext = appDbContext;
   }
 
-  private string ExtractDatabaseName(string connectionString)
+  protected override async Task<ApplicationResult<List<OrganizationResponseDto>>> HandleRequest(
+    GetOrganizationsQuery request,
+    CancellationToken cancellationToken)
   {
-    var dbIndex = connectionString.IndexOf("Database=", StringComparison.OrdinalIgnoreCase);
-    if (dbIndex == -1) return "Kroll"; // Fallback to default
-    
-    var startIndex = dbIndex + "Database=".Length;
-    var endIndex = connectionString.IndexOf(";", startIndex);
-    if (endIndex == -1) endIndex = connectionString.Length;
-    
-    return connectionString.Substring(startIndex, endIndex - startIndex).Trim();
-  }
+    IQueryable<Organization> query = _appDbContext.Organization
+        .AsNoTracking()
+        .Where(x => !x.IsDeleted);
 
-  protected override async Task<ApplicationResult<List<OrganizationResponseDto>>> HandleRequest(GetOrganizationsQuery request, CancellationToken cancellationToken)
-  {
-    try
+    if (!string.IsNullOrWhiteSpace(request.SearchKeyword))
     {
-      var searchKeyword = !string.IsNullOrEmpty(request.SearchKeyword) ? request.SearchKeyword.Trim() : "";
-      var hasSearch = !string.IsNullOrEmpty(searchKeyword);
-      var searchPattern = hasSearch ? $"%{searchKeyword}%" : "";
+      query = query.Where(x =>
+          x.Name.Contains(request.SearchKeyword) ||
+          x.Address.Contains(request.SearchKeyword) ||
+          x.DefaultEmail!.Contains(request.SearchKeyword));
+    }
 
-      // Base query to get organizations from SQL Server Pharmacy database
-      var baseQuery = $@"
-        SELECT DISTINCT
-          nh.ID as Id,
-          nh.Name as Name,
-          NULL as Address,
-          NULL as DefaultEmail,
-          GETDATE() as CreatedDate
-        FROM [{_databaseName}].dbo.NH nh
-        WHERE 1=1";
+    if (request.OrganizationId is not null)
+    {
+      query = query.Where(x => x.Id == request.OrganizationId);
+    }
 
-      // Add search condition if needed
-      if (hasSearch)
+    if (request.OrganizationExternalId is not null)
+    {
+      query = query.Where(x => x.OrganizationExternalId == request.OrganizationExternalId);
+    }
+
+    if (!string.IsNullOrWhiteSpace(request.Ward))
+    {
+      var wardIds = request.Ward
+          .Split(',', StringSplitOptions.RemoveEmptyEntries)
+          .Select(w => w.Trim())
+          .Where(w => long.TryParse(w, out _))
+          .Select(long.Parse)
+          .ToList();
+
+      if (wardIds.Any())
       {
-        baseQuery += @"
-          AND nh.Name LIKE @SearchKeyword";
+        query = query.Where(x => wardIds.All(id => x.Wards.Any(w => w.Id == id)));
       }
+    }
 
-      // Count query
-      var countQuery = $@"
-        SELECT COUNT(DISTINCT nh.ID)
-        FROM [{_databaseName}].dbo.NH nh
-        WHERE 1=1";
+    if (!string.IsNullOrWhiteSpace(request.OrderBy))
+    {
+      var allowedSortColumns = new HashSet<string>
+    {
+        nameof(Organization.Id),
+        nameof(Organization.OrganizationExternalId),
+        nameof(Organization.Name),
+        nameof(Organization.Address),
+        nameof(Organization.CreatedDate),
+        nameof(Organization.ModifiedDate)
+    };
 
-      if (hasSearch)
+      if (allowedSortColumns.Contains(request.OrderBy))
       {
-        countQuery += @"
-          AND nh.Name LIKE @SearchKeyword";
-      }
-
-      // Pagination
-      var orderBy = request.SortByAscending ? "ORDER BY nh.Name ASC" : "ORDER BY nh.Name DESC";
-      var paginatedQuery = $@"
-        {baseQuery}
-        {orderBy}
-        OFFSET @Offset ROWS
-        FETCH NEXT @PageSize ROWS ONLY";
-
-      var organizations = new List<OrganizationResponseDto>();
-      int totalCount = 0;
-
-      using (var connection = new SqlConnection(_connectionString))
-      {
-        await connection.OpenAsync(cancellationToken);
-
-        // Get total count
-        using (var countCommand = new SqlCommand(countQuery, connection))
+        if (request.OrderBy == nameof(Organization.Name))
         {
-          if (hasSearch)
-          {
-            countCommand.Parameters.AddWithValue("@SearchKeyword", searchPattern);
-          }
-
-          var countResult = await countCommand.ExecuteScalarAsync(cancellationToken);
-          totalCount = countResult != DBNull.Value ? Convert.ToInt32(countResult) : 0;
+          query = request.SortByAscending
+              ? query.OrderBy(x => x.Name.ToLower())
+              : query.OrderByDescending(x => x.Name.ToLower());
         }
-
-        // Get paginated results
-        using (var command = new SqlCommand(paginatedQuery, connection))
+        else if (request.OrderBy == nameof(Organization.Address))
         {
-          if (hasSearch)
-          {
-            command.Parameters.AddWithValue("@SearchKeyword", searchPattern);
-          }
-          command.Parameters.AddWithValue("@Offset", (request.PageNumber - 1) * request.PageSize);
-          command.Parameters.AddWithValue("@PageSize", request.PageSize);
-
-          using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-          {
-            while (await reader.ReadAsync(cancellationToken))
-            {
-              var id = reader.IsDBNull("Id") ? 0 : reader.GetInt32("Id");
-              organizations.Add(new OrganizationResponseDto
-              {
-                Id = id,
-                OrganizationExternalId=id,
-                Name = reader.IsDBNull("Name") ? string.Empty : reader.GetString("Name"),
-                WardIds = null, // WardIds are stored in PostgreSQL, not in Kroll
-                Address = reader.IsDBNull("Address") ? string.Empty : reader.GetString("Address"),
-                DefaultEmail = reader.IsDBNull("DefaultEmail") ? null : reader.GetString("DefaultEmail"),
-                CreatedDate = reader.IsDBNull("CreatedDate") ? DateTime.UtcNow : reader.GetDateTime("CreatedDate")
-              });
-            }
-          }
+          query = request.SortByAscending
+              ? query.OrderBy(x => x.Address.ToLower())
+              : query.OrderByDescending(x => x.Address.ToLower());
+        }
+        else
+        {
+          query = request.SortByAscending
+              ? query.OrderBy(x => EF.Property<object>(x, request.OrderBy))
+              : query.OrderByDescending(x => EF.Property<object>(x, request.OrderBy));
         }
       }
-
-      return ApplicationResult<List<OrganizationResponseDto>>.SuccessResult(organizations, totalCount);
     }
-    catch (Exception ex)
+    else
     {
-      Logger.LogError(ex, "Error fetching organizations from Pharmacy database");
-      return ApplicationResult<List<OrganizationResponseDto>>.Error($"Error fetching organizations: {ex.Message}");
+      query = query.OrderBy(x => x.Id);
     }
+
+
+    var totalCount = await query.CountAsync(cancellationToken);
+
+    if (totalCount == 0)
+    {
+      return ApplicationResult<List<OrganizationResponseDto>>
+          .Error("Organization Does not Exist!");
+    }
+
+    if (request.PageSize > 0)
+    {
+      query = query
+          .Skip((request.PageNumber - 1) * request.PageSize)
+          .Take(request.PageSize);
+    }
+
+    var organizations = await query
+        .Select(x => new OrganizationResponseDto
+        {
+          Id = x.Id,
+          OrganizationExternalId = x.OrganizationExternalId,
+          Name = x.Name,
+          Address = x.Address,
+          DefaultEmail = x.DefaultEmail,
+          CreatedDate = x.CreatedDate,
+          ModifiedDate = x.ModifiedDate,
+          WardIds = x.Wards.Select(w => w.Id).ToArray(),
+          Wards = x.Wards.Select(w => new WardResponseDto
+          {
+            Id = w.Id,
+            ExternalId = w.ExternalId,
+            Name = w.Name
+          }).ToList()
+        })
+        .ToListAsync(cancellationToken);
+
+    return ApplicationResult<List<OrganizationResponseDto>>
+        .SuccessResult(organizations, totalCount);
   }
+
+
+
 }
-

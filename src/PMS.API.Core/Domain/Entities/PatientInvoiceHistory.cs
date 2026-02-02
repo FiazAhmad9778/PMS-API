@@ -13,8 +13,10 @@ public class PatientInvoiceHistory : IAggregateRoot, ISoftDeleteEntity, IAuditEn
   [Key]
   public long Id { get; set; }
   public long OrganizationId { get; set; }
+  public long PatientId { get; set; }
   public bool IsSent { get; set; } = false;
   public string? InvoiceSendingWays { get; set; }
+  public string? InvoiceStatus { get; set; }
   public DateTime InvoiceStartDate { get; set; }
   public DateTime InvoiceEndDate { get; set; }
   public string? FilePath { get; set; }

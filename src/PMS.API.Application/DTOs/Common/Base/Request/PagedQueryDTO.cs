@@ -1,13 +1,11 @@
-﻿namespace PMS.API.Core.DTOs.Base;
+﻿using PMS.API.Application.Common.PredicateBuilderHelper;
 
-public class PagedQueryBaseRequest
+namespace PMS.API.Application.DTOs.Common.Base.Request;
+public class PagedQueryDTO
 {
   public virtual int PageSize { get; set; } = 50;
   public int PageNumber { get; set; } = 1;
   public string? OrderBy { get; set; } = "CreatedDate";
   public bool SortByAscending { get; set; } = false;
   public string? SearchKeyword { get; set; }
-  public long? OrganizationId { get; set; }
-  public long? OrganizationExternalId { get; set; }
-  public string? Ward { get; set; }
 }

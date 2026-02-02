@@ -1,118 +1,109 @@
-using MediatR;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
+﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
 using PMS.API.Application.Common.Models;
+using PMS.API.Application.DTOs.Common.Base.Request;
 using PMS.API.Application.Features.Organizations.DTO;
-using PMS.API.Core.DTOs.Base;
-using System.Data;
+using PMS.API.Core.Domain.Entities;
+using PMS.API.Infrastructure.Data;
 
 namespace PMS.API.Application.Features.Organizations.Queries.GetWards;
-
-public class GetWardsQuery : IRequest<ApplicationResult<List<WardResponseDto>>>
+public class GetWardsQuery : PagedQueryDTO, IRequest<ApplicationResult<List<WardPageResponseDTO>>>
 {
-  public long OrganizationId { get; set; }
-  public string? SearchKeyword { get; set; }
+  public int WardId { get; set; }
 }
 
-public class GetWardsQueryHandler : RequestHandlerBase<GetWardsQuery, ApplicationResult<List<WardResponseDto>>>
+public class GetWardsQueryHandler : RequestHandlerBase<GetWardsQuery, ApplicationResult<List<WardPageResponseDTO>>>
 {
-  private readonly IConfiguration _configuration;
-  private readonly string _connectionString;
-  private readonly string _databaseName;
-
+  readonly AppDbContext _appDbContext;
   public GetWardsQueryHandler(
-    IConfiguration configuration,
     IServiceProvider serviceProvider,
-    ILogger<GetWardsQueryHandler> logger) : base(serviceProvider, logger)
+    ILogger<GetWardsQueryHandler> logger,
+    AppDbContext appDbContext) : base(serviceProvider, logger)
   {
-    _configuration = configuration;
-    _connectionString = _configuration.GetConnectionString("ARDashboardConnection") 
-      ?? throw new InvalidOperationException("Connection string 'ARDashboardConnection' not found.");
-    _databaseName = ExtractDatabaseName(_connectionString);
+    _appDbContext = appDbContext;
   }
 
-  private string ExtractDatabaseName(string connectionString)
+  protected override async Task<ApplicationResult<List<WardPageResponseDTO>>> HandleRequest(
+    GetWardsQuery request,
+    CancellationToken cancellationToken)
   {
-    var dbIndex = connectionString.IndexOf("Database=", StringComparison.OrdinalIgnoreCase);
-    if (dbIndex == -1) return "Kroll"; // Fallback to default
-    
-    var startIndex = dbIndex + "Database=".Length;
-    var endIndex = connectionString.IndexOf(";", startIndex);
-    if (endIndex == -1) endIndex = connectionString.Length;
-    
-    return connectionString.Substring(startIndex, endIndex - startIndex).Trim();
-  }
+    IQueryable<Ward> query = _appDbContext.Ward
+        .AsNoTracking();
 
-  protected override async Task<ApplicationResult<List<WardResponseDto>>> HandleRequest(GetWardsQuery request, CancellationToken cancellationToken)
-  {
-    try
+    if (request.WardId > 0)
     {
-      var searchKeyword = !string.IsNullOrEmpty(request.SearchKeyword) ? request.SearchKeyword.Trim() : "";
-      var hasSearch = !string.IsNullOrEmpty(searchKeyword);
-      var searchPattern = hasSearch ? $"%{searchKeyword}%" : "";
+      query = query.Where(x => x.Id == request.WardId);
+    }
 
-      // Query to get distinct wards for a specific organization from Kroll
-      var query = $@"
-        SELECT DISTINCT
-          nhw.ID as ExternalId,
-          nhw.Name as Name
-        FROM [{_databaseName}].dbo.Pat pat
-        LEFT JOIN [{_databaseName}].dbo.NH nh ON nh.ID = pat.NHID
-        LEFT JOIN [{_databaseName}].dbo.NHWard nhw ON nhw.ID = pat.NHWardID
-        WHERE pat.NHID = @OrganizationId
-          AND nhw.Name IS NOT NULL";
+    if (!string.IsNullOrWhiteSpace(request.SearchKeyword))
+    {
+      var keyword = request.SearchKeyword.Trim();
+      query = query.Where(x => x.Name.Contains(keyword));
+    }
 
-      if (hasSearch)
+    if (!string.IsNullOrWhiteSpace(request.OrderBy))
+    {
+      var allowedSortColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    nameof(Ward.Id),
+    nameof(Ward.ExternalId),
+    nameof(Ward.OrganizationId),
+    nameof(Ward.Name),
+    nameof(Ward.CreatedDate),
+    nameof(Ward.ModifiedDate)
+};
+
+
+      if (allowedSortColumns.Contains(request.OrderBy))
       {
-        query += @"
-          AND nhw.Name LIKE @SearchKeyword";
-      }
-
-      query += @"
-        ORDER BY nhw.Name ASC";
-
-      var wards = new List<WardResponseDto>();
-
-      using (var connection = new SqlConnection(_connectionString))
-      {
-        await connection.OpenAsync(cancellationToken);
-
-        using (var command = new SqlCommand(query, connection))
+        if (request.OrderBy == nameof(Ward.Name))
         {
-          command.Parameters.AddWithValue("@OrganizationId", request.OrganizationId);
-          if (hasSearch)
-          {
-            command.Parameters.AddWithValue("@SearchKeyword", searchPattern);
-          }
-
-          using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-          {
-            while (await reader.ReadAsync(cancellationToken))
-            {
-              if (!reader.IsDBNull("Name"))
-              {
-                var externalId = reader.IsDBNull("ExternalId") ? null : reader.GetInt32("ExternalId").ToString();
-                wards.Add(new WardResponseDto
-                {
-                  Id = 0, // Not stored in PostgreSQL yet
-                  Name = reader.GetString("Name"),
-                  ExternalId = externalId
-                });
-              }
-            }
-          }
+          query = request.SortByAscending
+              ? query.OrderBy(x => x.Name.ToLower())
+              : query.OrderByDescending(x => x.Name.ToLower());
+        }
+        else
+        {
+          query = request.SortByAscending
+              ? query.OrderBy(x => EF.Property<object>(x, request.OrderBy))
+              : query.OrderByDescending(x => EF.Property<object>(x, request.OrderBy));
         }
       }
-
-      return ApplicationResult<List<WardResponseDto>>.SuccessResult(wards, wards.Count);
     }
-    catch (Exception ex)
+    else
     {
-      Logger.LogError(ex, "Error fetching wards from Pharmacy database");
-      return ApplicationResult<List<WardResponseDto>>.Error($"Error fetching wards: {ex.Message}");
+      query = query.OrderByDescending(x => x.CreatedDate); 
     }
-  }
-}
 
+    var totalCount = await query.CountAsync(cancellationToken);
+    if (totalCount == 0)
+    {
+      return ApplicationResult<List<WardPageResponseDTO>>.Error("No wards found!");
+    }
+
+    if (request.PageSize > 0)
+    {
+      query = query
+          .Skip((request.PageNumber - 1) * request.PageSize)
+          .Take(request.PageSize);
+    }
+
+    var wards = await query
+        .Select(x => new WardPageResponseDTO
+        {
+          Id = x.Id,
+          Name = x.Name,
+          ExternalId = x.ExternalId,
+          OrganizationId = x.OrganizationId,
+          OrganizationName = x.OrganizationId != null ? x.Organization!.Name : string.Empty,
+          CreatedDate = x.CreatedDate,
+          ModifiedDate = x.ModifiedDate
+        })
+        .ToListAsync(cancellationToken);
+
+    return ApplicationResult<List<WardPageResponseDTO>>.SuccessResult(wards, totalCount);
+  }
+
+}
