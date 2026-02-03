@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMS.API.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PMS.API.Infrastructure.Data;
 namespace PMS.API.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251205221401_AddedOrderTable")]
+    partial class AddedOrderTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -620,92 +623,6 @@ namespace PMS.API.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistory", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("FilePath")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime>("InvoiceEndDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("InvoiceStartDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("InvoiceStatus")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("InvoiceStatusHistory")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSent")
-                        .HasColumnType("boolean");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<long?>("OrganizationId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("PatientId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InvoiceStatus");
-
-                    b.HasIndex("OrganizationId", "InvoiceStartDate", "InvoiceEndDate");
-
-                    b.ToTable("InvoiceHistory", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistoryWard", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("InvoiceHistoryId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("PatientIds")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<long>("WardId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InvoiceHistoryId");
-
-                    b.HasIndex("WardId");
-
-                    b.ToTable("InvoiceHistoryWard", (string)null);
-                });
-
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Order", b =>
                 {
                     b.Property<long>("Id")
@@ -809,82 +726,15 @@ namespace PMS.API.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("phoneNumber");
 
-                    b.Property<string>("WebhookId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("webhookId");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedDate");
 
                     b.HasIndex("FaxStatus");
 
-                    b.HasIndex("WebhookId")
-                        .IsUnique();
-
                     b.HasIndex("FaxStatus", "CreatedDate");
 
                     b.ToTable("Order", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Organization", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("address");
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("createdBy");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("createdDate");
-
-                    b.Property<string>("DefaultEmail")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("defaultEmail");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("isDeleted");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("modifiedBy");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("modifiedDate");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("name");
-
-                    b.Property<long>("OrganizationExternalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("organizationexternalid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name");
-
-                    b.ToTable("Organization", (string)null);
                 });
 
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.PMSErrorLog", b =>
@@ -928,132 +778,6 @@ namespace PMS.API.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PMSErrorLogs");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Patient", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("address");
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("createdBy");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("patientCreatedDate");
-
-                    b.Property<string>("DefaultEmail")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("defaultEmail");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("isDeleted");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("modifiedBy");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("modifiedDate");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("name");
-
-                    b.Property<long>("PatientId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("patientId");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("active")
-                        .HasColumnName("status");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name");
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("Patient", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Ward", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("createdBy");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("createdDate");
-
-                    b.Property<long>("ExternalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("externalId");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("isDeleted");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("modifiedBy");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("modifiedDate");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<long?>("OrganizationId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("organizationId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExternalId");
-
-                    b.HasIndex("Name");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.ToTable("Ward", (string)null);
                 });
 
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.DocumentMetadata", b =>
@@ -1137,27 +861,6 @@ namespace PMS.API.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistoryWard", b =>
-                {
-                    b.HasOne("PMS.API.Core.Domain.Entities.InvoiceHistory", "InvoiceHistory")
-                        .WithMany("InvoiceHistoryWardList")
-                        .HasForeignKey("InvoiceHistoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("InvoiceHistory");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Ward", b =>
-                {
-                    b.HasOne("PMS.API.Core.Domain.Entities.Organization", "Organization")
-                        .WithMany("Wards")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Document", b =>
                 {
                     b.Navigation("Metadata");
@@ -1166,16 +869,6 @@ namespace PMS.API.Infrastructure.Migrations
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Identity.ClaimGroup", b =>
                 {
                     b.Navigation("ApplicationClaims");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistory", b =>
-                {
-                    b.Navigation("InvoiceHistoryWardList");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Organization", b =>
-                {
-                    b.Navigation("Wards");
                 });
 #pragma warning restore 612, 618
         }

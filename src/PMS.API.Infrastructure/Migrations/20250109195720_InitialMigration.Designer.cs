@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMS.API.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PMS.API.Infrastructure.Data;
 namespace PMS.API.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250109195720_InitialMigration")]
+    partial class InitialMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,85 +25,6 @@ namespace PMS.API.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Document", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("DocumentName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("DocumentUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<int>("NoOfPatients")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("Status", "CreatedDate");
-
-                    b.ToTable("Document");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.DocumentMetadata", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<long>("DocumentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedDate");
-
-                    b.HasIndex("DocumentId");
-
-                    b.HasIndex("Key", "Value");
-
-                    b.ToTable("DocumentMetadata");
-                });
 
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Identity.ApplicationClaim", b =>
                 {
@@ -231,8 +155,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<long?>("CreatedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -243,8 +167,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<long?>("ModifiedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .HasColumnType("text");
@@ -261,7 +185,7 @@ namespace PMS.API.Infrastructure.Migrations
                         {
                             Id = 1L,
                             CreatedBy = 1L,
-                            CreatedDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             IsDeleted = false,
                             IsDisplay = false,
                             ModifiedBy = 1L,
@@ -272,7 +196,7 @@ namespace PMS.API.Infrastructure.Migrations
                         {
                             Id = 2L,
                             CreatedBy = 1L,
-                            CreatedDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             IsDeleted = false,
                             IsDisplay = false,
                             ModifiedBy = 1L,
@@ -454,8 +378,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<long?>("CreatedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -487,8 +411,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<long?>("ModifiedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -510,8 +434,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
-                    b.Property<byte[]>("SignatureData")
-                        .HasColumnType("bytea");
+                    b.Property<string>("SignatureUrl")
+                        .HasColumnType("text");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
@@ -609,8 +533,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("TokenExpiryTime")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateTimeOffset?>("TokenExpiryTime")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Value")
                         .HasColumnType("text");
@@ -618,273 +542,6 @@ namespace PMS.API.Infrastructure.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistory", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("FilePath")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime>("InvoiceEndDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("InvoiceStartDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("InvoiceStatus")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("InvoiceStatusHistory")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSent")
-                        .HasColumnType("boolean");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<long?>("OrganizationId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("PatientId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InvoiceStatus");
-
-                    b.HasIndex("OrganizationId", "InvoiceStartDate", "InvoiceEndDate");
-
-                    b.ToTable("InvoiceHistory", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistoryWard", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("InvoiceHistoryId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("PatientIds")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<long>("WardId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InvoiceHistoryId");
-
-                    b.HasIndex("WardId");
-
-                    b.ToTable("InvoiceHistoryWard", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Order", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("address");
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("createdBy");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("createdDate");
-
-                    b.Property<string>("DeliveryOrPickup")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("deliveryOrPickup");
-
-                    b.Property<string>("DeliveryTimeSlot")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("deliveryTimeSlot");
-
-                    b.Property<string>("FaxErrorMessage")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("faxErrorMessage");
-
-                    b.Property<int>("FaxRetryCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("faxRetryCount");
-
-                    b.Property<DateTime?>("FaxSentAt")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("faxSentAt");
-
-                    b.Property<string>("FaxStatus")
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Pending")
-                        .HasColumnName("faxStatus");
-
-                    b.Property<string>("FaxTransactionId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("faxTransactionId");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("firstName");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("isDeleted");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("lastName");
-
-                    b.Property<string>("Medication")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("medication");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("modifiedBy");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("modifiedDate");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("notes");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("phoneNumber");
-
-                    b.Property<string>("WebhookId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("webhookId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedDate");
-
-                    b.HasIndex("FaxStatus");
-
-                    b.HasIndex("WebhookId")
-                        .IsUnique();
-
-                    b.HasIndex("FaxStatus", "CreatedDate");
-
-                    b.ToTable("Order", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Organization", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("address");
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("createdBy");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("createdDate");
-
-                    b.Property<string>("DefaultEmail")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("defaultEmail");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("isDeleted");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("modifiedBy");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("modifiedDate");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("name");
-
-                    b.Property<long>("OrganizationExternalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("organizationexternalid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name");
-
-                    b.ToTable("Organization", (string)null);
                 });
 
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.PMSErrorLog", b =>
@@ -904,8 +561,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<long?>("CreatedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -919,8 +576,8 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<long?>("ModifiedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<long?>("TenantId")
                         .HasColumnType("bigint");
@@ -928,143 +585,6 @@ namespace PMS.API.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PMSErrorLogs");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Patient", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("address");
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("createdBy");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("patientCreatedDate");
-
-                    b.Property<string>("DefaultEmail")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("defaultEmail");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("isDeleted");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("modifiedBy");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("modifiedDate");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("name");
-
-                    b.Property<long>("PatientId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("patientId");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("active")
-                        .HasColumnName("status");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name");
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("Patient", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Ward", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("createdBy");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("createdDate");
-
-                    b.Property<long>("ExternalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("externalId");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("isDeleted");
-
-                    b.Property<long?>("ModifiedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("modifiedBy");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("modifiedDate");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<long?>("OrganizationId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("organizationId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExternalId");
-
-                    b.HasIndex("Name");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.ToTable("Ward", (string)null);
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.DocumentMetadata", b =>
-                {
-                    b.HasOne("PMS.API.Core.Domain.Entities.Document", "Document")
-                        .WithMany("Metadata")
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Document");
                 });
 
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Identity.ApplicationClaim", b =>
@@ -1137,45 +657,9 @@ namespace PMS.API.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistoryWard", b =>
-                {
-                    b.HasOne("PMS.API.Core.Domain.Entities.InvoiceHistory", "InvoiceHistory")
-                        .WithMany("InvoiceHistoryWardList")
-                        .HasForeignKey("InvoiceHistoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("InvoiceHistory");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Ward", b =>
-                {
-                    b.HasOne("PMS.API.Core.Domain.Entities.Organization", "Organization")
-                        .WithMany("Wards")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Organization");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Document", b =>
-                {
-                    b.Navigation("Metadata");
-                });
-
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Identity.ClaimGroup", b =>
                 {
                     b.Navigation("ApplicationClaims");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.InvoiceHistory", b =>
-                {
-                    b.Navigation("InvoiceHistoryWardList");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Organization", b =>
-                {
-                    b.Navigation("Wards");
                 });
 #pragma warning restore 612, 618
         }
