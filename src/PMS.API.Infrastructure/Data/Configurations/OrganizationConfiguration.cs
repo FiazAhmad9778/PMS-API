@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -14,6 +14,9 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
     builder.Property(o => o.Id)
         .HasColumnName("id")
         .ValueGeneratedOnAdd();
+
+    builder.Property(o => o.OrganizationExternalId)
+        .HasColumnName("organizationexternalid");
 
     builder.Property(o => o.Name)
         .HasColumnName("name")

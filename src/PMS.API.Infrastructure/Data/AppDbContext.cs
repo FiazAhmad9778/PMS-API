@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PMS.API.Core.Domain.Entities;
@@ -54,9 +54,8 @@ public class AppDbContext : IdentityDbContext<User,
 
   #region Invoicing
 
-  public DbSet<PatientInvoiceHistory> PatientInvoiceHistory => Set<PatientInvoiceHistory>();
-  public DbSet<PatientInvoiceHistoryWard> PatientInvoiceHistoryWard => Set<PatientInvoiceHistoryWard>();
-
+  public DbSet<InvoiceHistory> InvoiceHistory => Set<InvoiceHistory>();
+  public DbSet<InvoiceHistoryWard> InvoiceHistoryWard => Set<InvoiceHistoryWard>();
 
   #endregion
   public DbSet<PMSErrorLog> PMSErrorLogs => Set<PMSErrorLog>();

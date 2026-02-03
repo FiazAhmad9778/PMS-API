@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Invoice.Command;
 using PMS.API.Application.Features.Invoice.DTO;
 using PMS.API.Application.Features.Invoices.Commands.GenerateInvoice;
-using PMS.API.Application.Features.Patients.Commands.ExportOrganizationCharges;
+using PMS.API.Application.Features.Invoices.Commands.RequestInvoice;
 
 namespace PMS.API.Web.Api;
 
@@ -19,7 +19,7 @@ public class InvoiceController : BaseApiController
     _env = env;
   }
 
-  [HttpPost("generate")]
+  [HttpPost("export")]
   [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
   public async Task<IActionResult> GenerateInvoice([FromBody] GenerateInvoiceCommand command)
   {
@@ -91,9 +91,9 @@ public class InvoiceController : BaseApiController
     );
   }
 
-  [HttpPost("organizationCharges/excel")]
-  public async Task<IActionResult> OrganizationChargesExcel(
-    [FromBody] ExportOrganizationChargesCommand command)
+  [HttpPost("generate-invoice")]
+  public async Task<IActionResult> RequestInvoice(
+    [FromBody] RequestInvoiceCommand command)
   {
     var result = await Mediator.Send(command);
 

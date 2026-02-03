@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -16,8 +16,7 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         .ValueGeneratedOnAdd();
 
     builder.Property(p => p.PatientId)
-        .HasColumnName("patientId")
-        .HasMaxLength(100);
+        .HasColumnName("patientId");
 
     builder.Property(p => p.Name)
         .HasColumnName("name")

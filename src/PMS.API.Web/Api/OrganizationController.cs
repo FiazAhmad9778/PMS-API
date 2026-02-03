@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Organizations.Commands.CreateOrganization;
@@ -27,35 +27,35 @@ public class OrganizationController : BaseApiController
     return await Mediator.Send(request);
   }
 
-  [HttpPost("saveFromPMS")]
+  [HttpPost("kroll/save")]
   [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<bool>> SaveFromPMS(CreateOrganizationExternalCommand request)
   {
     return await Mediator.Send(request);
   }
 
-  [HttpGet("get")]
+  [HttpGet("list")]
   [ProducesResponseType(typeof(ApplicationResult<List<OrganizationResponseDto>>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<List<OrganizationResponseDto>>> GetOrganizations([FromQuery] GetOrganizationsQuery query)
   {
     return await Mediator.Send(query);
   }
 
-  [HttpGet("getOrganizationFromPMS")]
+  [HttpGet("kroll/list")]
   [ProducesResponseType(typeof(ApplicationResult<List<OrganizationResponseDto>>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<List<OrganizationResponseDto>>> GetOrganizationsFromPMS([FromQuery] GetOrganizationsFromPMSQuery query)
   {
     return await Mediator.Send(query);
   }
 
-  [HttpGet("getWards")]
+  [HttpGet("wards")]
   [ProducesResponseType(typeof(ApplicationResult<List<WardPageResponseDTO>>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<List<WardPageResponseDTO>>> GetWards([FromQuery] GetWardsQuery query)
   {
     return await Mediator.Send(query);
   }
 
-  [HttpGet("getWardsFromPMS")]
+  [HttpGet("kroll/wards")]
   [ProducesResponseType(typeof(ApplicationResult<List<WardResponseDto>>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<List<WardResponseDto>>> GetWardsFromPMS([FromQuery] GetWardsFromPMSQuery query)
   {
@@ -69,13 +69,12 @@ public class OrganizationController : BaseApiController
     return await Mediator.Send(query);
   }
 
-  [HttpGet("dropdownFromPMS")]
+  [HttpGet("kroll/dropdown")]
   [ProducesResponseType(typeof(ApplicationResult<List<OrganizationResponseDto>>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<List<OrganizationResponseDto>>> GetOrganizationDropdownFromPMS([FromQuery] GetOrganizationFromPMSDropdownQuery query)
   {
     return await Mediator.Send(query);
   }
-
 
   [HttpGet("wards/dropdown")]
   [ProducesResponseType(typeof(ApplicationResult<List<WardResponseDto>>), StatusCodes.Status200OK)]
@@ -84,7 +83,7 @@ public class OrganizationController : BaseApiController
     return await Mediator.Send(query);
   }
 
-  [HttpGet("wardsFromPMS/dropdown")]
+  [HttpGet("kroll/wards/dropdown")]
   [ProducesResponseType(typeof(ApplicationResult<List<WardResponseDto>>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<List<WardResponseDto>>> GetWardDropdownFromPMS([FromQuery] GetWardDropdownFromPMSQuery query)
   {

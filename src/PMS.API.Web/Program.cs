@@ -9,15 +9,16 @@ using LiteDB;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
-using OfficeOpenXml;
 using PMS.API.Application;
 using PMS.API.Application.Common.Helpers;
+using PMS.API.Application.Services.Interfaces;
 using PMS.API.Core;
 using PMS.API.Infrastructure;
 using PMS.API.Infrastructure.Data;
 using PMS.API.Infrastructure.Interfaces;
 using PMS.API.Web;
 using PMS.API.Web.Common;
+using PMS.API.Web.Helpers;
 using PMS.API.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -104,25 +105,25 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
   containerBuilder.RegisterModule(new DefaultInfrastructureModule(builder.Environment.EnvironmentName == "Development"));
 });
 builder.Services.AddHealthChecks().AddNpgSql(connectionString!);
-//await builder.Services.SeedUserAsync();
+await builder.Services.SeedUserAsync();
 
 #region Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
 #endregion
 
 
-// ✅ Configure Hangfire with PostgreSQL using the new method
-//builder.Services.AddHangfire(config =>
-//    config.UsePostgreSqlStorage(options =>
-//    {
-//      options.UseNpgsqlConnection(connectionString);
-//    },
-//    new PostgreSqlStorageOptions
-//    {
-//      SchemaName = "hangfire"
-//    }));
+// Configure Hangfire with PostgreSQL
+builder.Services.AddHangfire(config =>
+    config.UsePostgreSqlStorage(options =>
+    {
+      options.UseNpgsqlConnection(connectionString!);
+    },
+    new PostgreSqlStorageOptions
+    {
+      SchemaName = "hangfire"
+    }));
 
-//builder.Services.AddHangfireServer(options => options.WorkerCount = 1); // ✅ Ensures only 1 job runs at a time
+builder.Services.AddHangfireServer(options => options.WorkerCount = 1);
 
 
 
@@ -177,22 +178,23 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<AppDbContext>();
     context.Database.EnsureCreated();
 
-    // ✅ Ensure Hangfire storage is initialized before scheduling jobs
+    // Hangfire recurring jobs
     var recurringJobManager = services.GetRequiredService<IRecurringJobManager>();
 
     //recurringJobManager.AddOrUpdate<IDocumentService>(
     //    "sync-documents",
     //    service => service.SyncDocuments(CancellationToken.None),
-    //    "*/2 * * * *"
-    //);
+    //    "*/2 * * * *");
 
-    // Schedule recurring job to process pending orders every 10 minutes
     //recurringJobManager.AddOrUpdate<IOrderFaxService>(
     //    "process-pending-orders",
     //    service => service.ProcessPendingOrdersAsync(CancellationToken.None),
-    //    "*/10 * * * *" // Every 10 minutes
-    //);
+    //    "*/10 * * * *"); // Every 10 minutes
 
+    recurringJobManager.AddOrUpdate<IInvoiceProcessingService>(
+        "process-pending-invoices",
+        service => service.ProcessPendingInvoicesAsync(CancellationToken.None),
+        "*/5 * * * *"); // Every 5 minutes
   }
   catch (Exception ex)
   {
@@ -200,7 +202,7 @@ using (var scope = app.Services.CreateScope())
     logger.LogError(ex, "An error occurred seeding the DB. {exceptionMessage}", ex.Message);
   }
 }
-//app.UseHangfireDashboard();
+app.UseHangfireDashboard();
 app.Run();
 
 // Make the implicit Program.cs class public, so integration tests can reference the correct assembly for host building

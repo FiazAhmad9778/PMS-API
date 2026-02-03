@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Patients.Commands.AddPatientsByFilter;
@@ -6,6 +6,7 @@ using PMS.API.Application.Features.Patients.Commands.CreatePatient;
 using PMS.API.Application.Features.Patients.DTO;
 using PMS.API.Application.Features.Patients.Queries.GetPatientDropdown;
 using PMS.API.Application.Features.Patients.Queries.GetPatients;
+using PMS.API.Application.Features.Patients.Queries.GetPatientsLocal;
 
 namespace PMS.API.Web.Api;
 
@@ -25,7 +26,7 @@ public class PatientController : BaseApiController
     return await Mediator.Send(request);
   }
 
-  [HttpPost("saveFromPMS")]
+  [HttpPost("kroll/save")]
   [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<bool>> SaveFromPMS(CreatePatientFromPMSCommand request)
   {
@@ -34,7 +35,14 @@ public class PatientController : BaseApiController
 
   [HttpGet("list")]
   [ProducesResponseType(typeof(ApplicationResult<List<PatientResponseDto>>), StatusCodes.Status200OK)]
-  public async Task<ApplicationResult<List<PatientResponseDto>>> GetPatients([FromQuery] GetPatientsQuery query)
+  public async Task<ApplicationResult<List<PatientResponseDto>>> GetPatients([FromQuery] GetPatientsLocalQuery query)
+  {
+    return await Mediator.Send(query);
+  }
+
+  [HttpGet("kroll/list")]
+  [ProducesResponseType(typeof(ApplicationResult<List<PatientResponseDto>>), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<List<PatientResponseDto>>> GetPatientsFromPMS([FromQuery] GetPatientsQuery query)
   {
     return await Mediator.Send(query);
   }

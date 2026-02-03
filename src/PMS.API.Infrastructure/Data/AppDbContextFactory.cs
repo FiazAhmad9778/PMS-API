@@ -1,4 +1,4 @@
-﻿// AppDbContextFactory.cs
+// AppDbContextFactory.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -10,12 +10,10 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
   {
     var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
 
-    // Replace with your PostgreSQL connection string - must match the password that works in pgAdmin
-    // Update the password below to match your actual PostgreSQL password
-    optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=PMS;User Id=postgres;Password=Sorry2S@Y;SslMode=Prefer;TrustServerCertificate=true;");
-
-    // Include any switches you need, e.g., Npgsql legacy timestamp behavior
-    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+    // Use SqlServer at design time so the built model matches the snapshot (SqlServer).
+    // This avoids NullReferenceException in MigrationsModelDiffer.TryGetDefaultValue when
+    // comparing snapshot (SqlServer) vs model (Npgsql). Runtime still uses Npgsql via Program/Startup.
+    optionsBuilder.UseSqlServer("Server=.;Database=PMS;Trusted_Connection=True;TrustServerCertificate=True;");
 
     return new AppDbContext(optionsBuilder.Options);
   }

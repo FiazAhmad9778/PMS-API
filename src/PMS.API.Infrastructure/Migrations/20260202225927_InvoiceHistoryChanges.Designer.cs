@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMS.API.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using PMS.API.Infrastructure.Data;
 namespace PMS.API.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260202225927_InvoiceHistoryChanges")]
+    partial class InvoiceHistoryChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -877,8 +880,7 @@ namespace PMS.API.Infrastructure.Migrations
                         .HasColumnName("name");
 
                     b.Property<long>("OrganizationExternalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("organizationexternalid");
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -978,6 +980,7 @@ namespace PMS.API.Infrastructure.Migrations
                         .HasColumnName("name");
 
                     b.Property<long>("PatientId")
+                        .HasMaxLength(100)
                         .HasColumnType("bigint")
                         .HasColumnName("patientId");
 
@@ -1018,6 +1021,7 @@ namespace PMS.API.Infrastructure.Migrations
                         .HasColumnName("createdDate");
 
                     b.Property<long>("ExternalId")
+                        .HasMaxLength(100)
                         .HasColumnType("bigint")
                         .HasColumnName("externalId");
 

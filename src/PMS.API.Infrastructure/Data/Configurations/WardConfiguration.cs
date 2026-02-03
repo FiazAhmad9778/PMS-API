@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -21,8 +21,7 @@ public class WardConfiguration : IEntityTypeConfiguration<Ward>
         .HasMaxLength(200);
 
     builder.Property(w => w.ExternalId)
-        .HasColumnName("externalId")
-        .HasMaxLength(100);
+        .HasColumnName("externalId");
 
     builder.Property(w => w.OrganizationId)
         .HasColumnName("organizationId");

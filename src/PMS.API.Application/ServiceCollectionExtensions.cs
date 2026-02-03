@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using PMS.API.Application.Common.BackgroundWorker;
 using PMS.API.Application.Common.Helpers;
+using PMS.API.Application.Common.Options;
 using PMS.API.Application.Identity;
 using PMS.API.Application.Services.Implementation;
 using PMS.API.Application.Services.Interfaces;
@@ -40,6 +41,8 @@ public static class ServiceCollectionExtensions
     services.AddScoped<IPdfService, PdfService>();
     services.AddScoped<IInterFaxService, InterFaxService>();
     services.AddScoped<IOrderFaxService, OrderFaxService>();
+    services.AddScoped<IInvoiceFileGenerationService, InvoiceFileGenerationService>();
+    services.AddScoped<IInvoiceProcessingService, InvoiceProcessingService>();
     services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
     services.AddHostedService<QueuedHostedService>();
   }
@@ -65,6 +68,7 @@ public static class ServiceCollectionExtensions
   private static void RegisterAuth(IServiceCollection services, IConfiguration configuration)
   {
     services.Configure<JwtOptions>(configuration.GetSection(nameof(JwtOptions)));
+    services.Configure<StatementFromOptions>(configuration.GetSection("StatementFrom"));
     var builderService = services.BuildServiceProvider();
     var claimApplication = builderService.GetRequiredService<IClaimApplication>();
     services.RegisterPolicy(claimApplication);

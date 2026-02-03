@@ -1,4 +1,4 @@
-﻿namespace PMS.API.Application.Common.Constants;
+namespace PMS.API.Application.Common.Constants;
 
 public class ApplicationConstants
 {
@@ -22,4 +22,11 @@ public class ImageExtensionContants
   public const string JPEG = ".jpeg";
   public const string GIF = ".gif";
   public const string PNG = ".png";
+}
+
+public static class InvoiceStatusConstants
+{
+  public const string Pending = "Pending";
+  public const string Completed = "Completed";
+  public const string Failed = "Failed";
 }

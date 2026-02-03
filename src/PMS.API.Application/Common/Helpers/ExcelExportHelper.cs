@@ -1,4 +1,4 @@
-﻿using ClosedXML.Excel;
+using ClosedXML.Excel;
 using PMS.API.Application.Features.Invoice.DTO;
 using PMS.API.Application.Features.Patients.DTO;
 using System.Drawing;
@@ -151,9 +151,13 @@ public static class ExcelExportHelper
   // =========================================================
   // =========== ORGANIZATION CHARGES EXCEL ==================
   // =========================================================
-  public static byte[] GenerateOrganizationChargesExcel(List<PatientFinancialResponseDto> chargesData, List<ClientSummaryDto> clientsData, DateTime fromDate, DateTime toDate,string path)
+  public static byte[] GenerateOrganizationChargesExcel(List<PatientFinancialResponseDto> chargesData, List<ClientSummaryDto> clientsData, DateTime fromDate, DateTime toDate, string path, StatementSheetDto statementData)
   {
     using var workbook = new XLWorkbook();
+
+    // Create Statement worksheet first (first tab)
+    var statementWs = workbook.Worksheets.Add("Statement");
+    CreateStatementSheet(statementWs, statementData, fromDate, toDate, path);
 
     // Create Clients worksheet
     var clientsWs = workbook.Worksheets.Add("Clients");
@@ -172,6 +176,114 @@ public static class ExcelExportHelper
     using var ms = new MemoryStream();
     workbook.SaveAs(ms);
     return ms.ToArray();
+  }
+
+  private static void CreateStatementSheet(IXLWorksheet ws, StatementSheetDto statementData, DateTime fromDate, DateTime toDate, string webRootPath)
+  {
+    var period = statementData.StatementPeriod;
+    var purple = XLColor.FromArgb(73, 7, 87);
+
+    // Logo
+    var logoPath = Path.Combine(webRootPath, "Images", "seamlesscare_logo.png");
+    if (File.Exists(logoPath))
+      ws.AddPicture(logoPath).MoveTo(ws.Cell(1, 1)).Scale(0.5);
+    else
+    {
+      ws.Cell(1, 1).Value = "Seamless Care";
+      ws.Cell(1, 1).Style.Font.FontSize = 16;
+      ws.Cell(1, 1).Style.Font.Bold = true;
+      ws.Cell(1, 1).Style.Font.FontColor = purple;
+      ws.Cell(2, 1).Value = "Pharmacy";
+      ws.Cell(2, 1).Style.Font.FontSize = 12;
+      ws.Cell(2, 1).Style.Font.FontColor = XLColor.FromArgb(180, 120, 100);
+    }
+
+    // Title: Pharmacy Services Statement as of {period}
+    ws.Cell(4, 1).Value = "Pharmacy Services Statement as of";
+    ws.Cell(4, 1).Style.Font.Bold = true;
+    var periodRange = ws.Range(4, 4, 4, 6);
+    periodRange.Merge();
+    periodRange.Value = period;
+    periodRange.Style.Fill.BackgroundColor = purple;
+    periodRange.Style.Font.FontColor = XLColor.White;
+    periodRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+    // Intro text
+    ws.Cell(6, 1).Value = "Thank you for your business. Please find below a summary of your statement.";
+    ws.Cell(8, 1).Value = "Clients: Summary of the charges by Patient & Program / Home";
+    ws.Cell(9, 1).Value = "Charges: Details for all the charges included in this statement.";
+
+    // TO block (left) - rows 12-20
+    const int toRowStart = 12;
+    ws.Cell(toRowStart, 1).Value = "To:";
+    ws.Cell(toRowStart, 1).Style.Font.Bold = true;
+    ws.Cell(toRowStart, 1).Style.Font.FontColor = purple;
+    ws.Cell(toRowStart + 1, 1).Value = statementData.To.Name;
+    if (!string.IsNullOrWhiteSpace(statementData.To.Address))
+    {
+      var addressLines = statementData.To.Address.Replace("\r\n", "\n").Split('\n');
+      for (int i = 0; i < addressLines.Length; i++)
+        ws.Cell(toRowStart + 2 + i, 1).Value = addressLines[i].Trim();
+    }
+    var toBoxEndRow = toRowStart + 6;
+    ws.Range(toRowStart, 1, toBoxEndRow, 3).Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+    ws.Range(toRowStart, 1, toBoxEndRow, 3).Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+    ws.Range(toRowStart, 1, toBoxEndRow, 3).Style.Border.OutsideBorderColor = purple;
+
+    // FROM block (right) - same rows
+    ws.Cell(toRowStart, 4).Value = "From:";
+    ws.Cell(toRowStart, 4).Style.Font.Bold = true;
+    ws.Cell(toRowStart, 4).Style.Font.FontColor = purple;
+    var from = statementData.From;
+    int fromRow = toRowStart + 1;
+    if (!string.IsNullOrWhiteSpace(from.BusinessName))
+      ws.Cell(fromRow++, 4).Value = from.BusinessName;
+    if (!string.IsNullOrWhiteSpace(from.AddressLine1))
+      ws.Cell(fromRow++, 4).Value = from.AddressLine1;
+    if (!string.IsNullOrWhiteSpace(from.AddressLine2))
+      ws.Cell(fromRow++, 4).Value = from.AddressLine2;
+    if (!string.IsNullOrWhiteSpace(from.CityProvincePostal))
+      ws.Cell(fromRow++, 4).Value = from.CityProvincePostal;
+    if (!string.IsNullOrWhiteSpace(from.Tel))
+      ws.Cell(fromRow++, 4).Value = "Tel: " + from.Tel;
+    if (!string.IsNullOrWhiteSpace(from.Fax))
+      ws.Cell(fromRow++, 4).Value = "Fax: " + from.Fax;
+    if (!string.IsNullOrWhiteSpace(from.HSTNumber))
+      ws.Cell(fromRow++, 4).Value = "HST# " + from.HSTNumber;
+    ws.Range(toRowStart, 4, toBoxEndRow, 7).Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+    ws.Range(toRowStart, 4, toBoxEndRow, 7).Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+    ws.Range(toRowStart, 4, toBoxEndRow, 7).Style.Border.OutsideBorderColor = purple;
+
+    // Statement Summary table - start at row 23
+    const int summaryRowStart = 23;
+    ws.Cell(summaryRowStart, 1).Value = "Statement Summary";
+    ws.Cell(summaryRowStart, 1).Style.Font.Bold = true;
+    const int summaryHeaderRow = summaryRowStart + 1;
+    string[] summaryHeaders = { "Details", "SubTotal", "Tax", "Payments Made", "Unused Credit", "Please Pay" };
+    for (int i = 0; i < summaryHeaders.Length; i++)
+      ws.Cell(summaryHeaderRow, i + 1).Value = summaryHeaders[i];
+    var summaryHeaderRange = ws.Range(summaryHeaderRow, 1, summaryHeaderRow, summaryHeaders.Length);
+    summaryHeaderRange.Style.Font.Bold = true;
+    summaryHeaderRange.Style.Font.FontColor = XLColor.White;
+    summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.FromArgb(102, 0, 102);
+    summaryHeaderRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+    var s = statementData.Summary;
+    const int summaryDataRow = summaryHeaderRow + 1;
+    ws.Cell(summaryDataRow, 1).Value = s.Details;
+    ws.Cell(summaryDataRow, 2).Value = s.SubTotal;
+    ws.Cell(summaryDataRow, 3).Value = s.Tax;
+    ws.Cell(summaryDataRow, 4).Value = s.PaymentsMade;
+    ws.Cell(summaryDataRow, 5).Value = s.UnusedCredit;
+    ws.Cell(summaryDataRow, 6).Value = s.PleasePay;
+    ws.Range(summaryDataRow, 2, summaryDataRow, 6).Style.NumberFormat.Format = "$#,##0.00";
+    ws.Range(summaryDataRow, 2, summaryDataRow, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+    ws.Range(summaryHeaderRow, 1, summaryDataRow, summaryHeaders.Length).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+    // Footer note
+    ws.Cell(summaryDataRow + 3, 2).Value = "Please check the Clients and Charges tabs for details. Questions? accounting@seamlesscare.ca";
+
+    ws.Columns().AdjustToContents();
   }
 
   // Create report header section (logo, statement title, intro text) for Charges worksheet
