@@ -27,13 +27,6 @@ public class OrganizationController : BaseApiController
     return await Mediator.Send(request);
   }
 
-  [HttpPost("kroll/save")]
-  [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
-  public async Task<ApplicationResult<bool>> SaveFromPMS(CreateOrganizationExternalCommand request)
-  {
-    return await Mediator.Send(request);
-  }
-
   [HttpGet("list")]
   [ProducesResponseType(typeof(ApplicationResult<List<OrganizationResponseDto>>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<List<OrganizationResponseDto>>> GetOrganizations([FromQuery] GetOrganizationsQuery query)

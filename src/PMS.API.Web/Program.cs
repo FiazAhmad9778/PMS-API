@@ -23,9 +23,6 @@ using PMS.API.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure PdfSharpCore font resolver early to avoid TypeInitializationException
-// This must be set before any PdfSharpCore operations are performed
-//GlobalFontSettings.FontResolver = new PdfFontResolver();
 
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 

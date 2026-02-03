@@ -1,22 +1,28 @@
-﻿using System.ComponentModel.DataAnnotations;
+using Dapper;
 using MediatR;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
 using PMS.API.Application.Common.Models;
 using PMS.API.Core.Domain.Entities;
 using PMS.API.Infrastructure.Data;
-using PMS.API.SharedKernel.Interfaces;
+using System.ComponentModel.DataAnnotations;
 
 namespace PMS.API.Application.Features.Organizations.Commands.CreateOrganization;
 
 public class CreateOrganizationCommand : IRequest<ApplicationResult<long>>
 {
+  /// <summary>PMS (external) organization ID. Used to fetch org + wards from PMS and to link in our DB.</summary>
   [Required]
-  public required string Name { get; set; }
   public required long OrganizationExternalId { get; set; }
 
+  /// <summary>PMS (external) ward IDs to link. Fetched from PMS and saved in our DB if they don't already exist for this org.</summary>
   public long[]? WardIds { get; set; }
+
+  /// <summary>Optional; used when creating a new org if PMS name is missing.</summary>
+  public string? Name { get; set; }
 
   public string? Address { get; set; }
 
@@ -25,16 +31,16 @@ public class CreateOrganizationCommand : IRequest<ApplicationResult<long>>
 
 public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCommand, ApplicationResult<long>>
 {
-  private readonly SharedKernel.Interfaces.IRepository<Organization> _repository;
+  private readonly IConfiguration _configuration;
   private readonly AppDbContext _dbContext;
 
   public CreateOrganizationHandler(
-    SharedKernel.Interfaces.IRepository<Organization> repository,
+    IConfiguration configuration,
     AppDbContext dbContext,
     IServiceProvider serviceProvider,
     ILogger<CreateOrganizationHandler> logger) : base(serviceProvider, logger)
   {
-    _repository = repository;
+    _configuration = configuration;
     _dbContext = dbContext;
   }
 
@@ -42,59 +48,119 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
   {
     try
     {
-      // Check if organization already exists in PostgreSQL
-      var existingOrganization = await _dbContext.Organization
-        .FirstOrDefaultAsync(o => o.Name == request.Name && !o.IsDeleted, cancellationToken);
+      // 1. Fetch organization + wards from PMS DB (WardIds are external/PMS ward IDs)
+      var sql = @"
+            SELECT 
+                nh.ID as OrganizationId,
+                nh.Name as OrganizationName,
+                nh.Address1 as Address,
+                w.ID as WardId,
+                w.Name as WardName
+            FROM dbo.NH nh
+            LEFT JOIN dbo.NHWard w ON w.NHID = nh.ID
+            WHERE nh.ID = @OrganizationExternalId";
 
-      long organizationId;
-      
-      if (existingOrganization == null)
+      if (request.WardIds != null && request.WardIds.Length > 0)
       {
+        sql += " AND w.ID IN @WardIds";
+      }
 
-        // Organization doesn't exist, create it
-        var organization = new Organization
+      var connectionString = _configuration.GetConnectionString("ARDashboardConnection")
+          ?? throw new InvalidOperationException("Connection string 'ARDashboardConnection' not found.");
+
+      using var connection = new SqlConnection(connectionString);
+      await connection.OpenAsync(cancellationToken);
+
+      var data = (await connection.QueryAsync<PmsOrgWardRow>(
+          sql,
+          new { request.OrganizationExternalId, request.WardIds }))
+          .ToList();
+
+      if (!data.Any())
+        return ApplicationResult<long>.Error("No organization/wards found in PMS DB.");
+
+      var wardsFromPms = data
+          .Where(d => d.WardId.HasValue)
+          .GroupBy(d => d.WardId!.Value)
+          .Select(g => g.First())
+          .ToList();
+
+      var firstRow = data.First();
+
+      // 2. Resolve our organization (by external org ID)
+      var organizationEntity = await _dbContext.Organization
+          .Include(o => o.Wards)
+          .FirstOrDefaultAsync(o => o.OrganizationExternalId == request.OrganizationExternalId, cancellationToken);
+
+      if (organizationEntity != null)
+      {
+        // 3a. Org exists: save wards in our DB that don't already exist for this org
+        var existingExternalWardIds = organizationEntity.Wards
+            .Select(w => w.ExternalId)
+            .ToHashSet();
+
+        var newWards = wardsFromPms
+            .Where(d => !existingExternalWardIds.Contains(d.WardId!.Value))
+            .Select(d => new Ward
+            {
+              ExternalId = d.WardId!.Value,
+              Name = d.WardName ?? string.Empty,
+              OrganizationId = organizationEntity.Id,
+              CreatedDate = DateTime.UtcNow
+            })
+            .ToList();
+
+        if (newWards.Any())
         {
-          Name = request.Name,
-          OrganizationExternalId=request.OrganizationExternalId,
-          Address = string.IsNullOrWhiteSpace(request.Address) ? string.Empty : request.Address,
-          DefaultEmail = string.IsNullOrWhiteSpace(request.DefaultEmail) ? null : request.DefaultEmail,
-          CreatedDate = DateTime.UtcNow,
-          IsDeleted = false
-        };
-
-        await _repository.AddAsync(organization);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        organizationId = organization.Id;
-
-        // Load and assign wards if WardIds are provided
-        if (request.WardIds != null && request.WardIds.Length > 0)
-        {
-          var wards = await _dbContext.Ward
-            .Where(w => request.WardIds.Contains(w.Id) && !w.IsDeleted)
-            .ToListAsync(cancellationToken);
-          
-          foreach (var ward in wards)
-          {
-            ward.OrganizationId = organizationId; // Set the foreign key
-          }
-          
+          _dbContext.Ward.AddRange(newWards);
           await _dbContext.SaveChangesAsync(cancellationToken);
         }
-        Logger.LogInformation($"Created new organization '{request.Name}' with ID {organizationId}");
-      }
-      else
-      {
-        organizationId = existingOrganization.Id;
-        Logger.LogInformation($"Organization '{request.Name}' already exists with ID {organizationId}");
+
+        Logger.LogInformation("Organization (external {ExternalId}) already exists; added {Count} new ward(s).", request.OrganizationExternalId, newWards.Count);
+        return ApplicationResult<long>.SuccessResult(organizationEntity.Id);
       }
 
-      return ApplicationResult<long>.SuccessResult(organizationId);
+      // 3b. Org does not exist: create org and save wards linked to it
+      organizationEntity = new Organization
+      {
+        OrganizationExternalId = request.OrganizationExternalId,
+        Name = firstRow.OrganizationName ?? request.Name ?? string.Empty,
+        Address = firstRow.Address ?? request.Address ?? string.Empty,
+        DefaultEmail = string.IsNullOrWhiteSpace(request.DefaultEmail) ? null : request.DefaultEmail,
+        CreatedDate = DateTime.UtcNow,
+      };
+
+      foreach (var row in wardsFromPms)
+      {
+        organizationEntity.Wards.Add(new Ward
+        {
+          ExternalId = row.WardId!.Value,
+          Name = row.WardName ?? string.Empty,
+          CreatedDate = DateTime.UtcNow
+        });
+      }
+
+      _dbContext.Organization.Add(organizationEntity);
+      await _dbContext.SaveChangesAsync(cancellationToken);
+
+      Logger.LogInformation("Created organization '{Name}' (external {ExternalId}) with ID {Id} and {WardCount} ward(s).",
+          organizationEntity.Name, request.OrganizationExternalId, organizationEntity.Id, wardsFromPms.Count);
+
+      return ApplicationResult<long>.SuccessResult(organizationEntity.Id);
     }
     catch (Exception ex)
     {
-      Logger.LogError(ex, $"Error creating organization '{request.Name}': {ex.Message}");
-      return ApplicationResult<long>.Error($"Error creating organization: {ex.Message}");
+      Logger.LogError(ex, "Error saving organization (external {ExternalId}): {Message}", request.OrganizationExternalId, ex.Message);
+      return ApplicationResult<long>.Error("Failed to save organization and wards.");
     }
   }
-}
 
+  private sealed class PmsOrgWardRow
+  {
+    public long OrganizationId { get; init; }
+    public string? OrganizationName { get; init; }
+    public string? Address { get; init; }
+    public long? WardId { get; init; }
+    public string? WardName { get; init; }
+  }
+}
