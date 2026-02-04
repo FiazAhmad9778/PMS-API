@@ -115,8 +115,10 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
             w.ID AS WardId,
             ad.[Date],
             p.LastName + ', ' + p.FirstName AS PatientName,
+            w.Name AS YourCode,
             ar.AccountNum AS SeamCode,
             ad.Comment AS ChargeDescription,
+            CASE WHEN ad.TaxType = 0 THEN 'Exempt' WHEN ad.TaxType = 4 THEN 'HST' ELSE 'Other' END AS TaxType,
             ad.Amount
         FROM [{_databaseName}].dbo.NHWard w
         JOIN [{_databaseName}].dbo.Pat p ON p.NHWardID = w.ID
@@ -130,9 +132,11 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
 
     var clientSummaryQuery = $@"
         SELECT
+            p.ID AS PatientId,
+            p.LastName + ', ' + p.FirstName AS PatientName,
             w.ID AS WardId,
             w.Name AS LocationHome,
-            COUNT(DISTINCT p.ID) AS PatientCount,
+            MAX(ar.AccountNum) AS SeamLessCode,
             SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
             SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
             SUM(ISNULL(ai.PaymentPending, 0)) AS PaymentsMade,
@@ -145,7 +149,7 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
             w.ID IN (SELECT CAST(value AS BIGINT) FROM STRING_SPLIT(@WardIds, ','))
             AND ai.InvoiceDate >= @FromDate
             AND ai.InvoiceDate < DATEADD(DAY, 1, @ToDate)
-        GROUP BY w.ID, w.Name;";
+        GROUP BY p.ID, p.LastName, p.FirstName, w.ID, w.Name;";
 
     using var connection = new SqlConnection(_connectionString);
     await connection.OpenAsync(ct);
@@ -170,11 +174,13 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
     var chargesQuery = $@"
         SELECT
             p.ID AS PatientId,
-            w.ID AS WardId,
+            ISNULL(w.ID, 0) AS WardId,
             ad.[Date],
             p.LastName + ', ' + p.FirstName AS PatientName,
+            p.Address1 AS YourCode,
             ar.AccountNum AS SeamCode,
             ad.Comment AS ChargeDescription,
+            CASE WHEN ad.TaxType = 0 THEN 'Exempt' WHEN ad.TaxType = 4 THEN 'HST' ELSE 'Other' END AS TaxType,
             ad.Amount
         FROM [{_databaseName}].dbo.Pat p
         LEFT JOIN [{_databaseName}].dbo.NHWard w ON w.ID = p.NHWardID
@@ -189,9 +195,10 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
     var clientSummaryQuery = $@"
         SELECT
             p.ID AS PatientId,
+            p.LastName + ', ' + p.FirstName AS PatientName,
             ISNULL(w.ID, 0) AS WardId,
             ISNULL(w.Name, 'N/A') AS LocationHome,
-            COUNT(DISTINCT ar.ID) AS InvoiceCount,
+            MAX(ar.AccountNum) AS SeamLessCode,
             SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
             SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
             SUM(ISNULL(ai.PaymentPending, 0)) AS PaymentsMade,
@@ -204,7 +211,7 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
             p.ID = @PatientId
             AND ai.InvoiceDate >= @FromDate
             AND ai.InvoiceDate < DATEADD(DAY, 1, @ToDate)
-        GROUP BY p.ID, w.ID, w.Name;";
+        GROUP BY p.ID, p.LastName, p.FirstName, w.ID, w.Name;";
 
     using var connection = new SqlConnection(_connectionString);
     await connection.OpenAsync(ct);
@@ -278,9 +285,10 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
     Directory.CreateDirectory(folder);
     var fileName = $"{prefix}_{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx";
     var fullPath = Path.Combine(folder, fileName);
+    var webRoot = Path.GetDirectoryName(folder) ?? folder;
 
     var bytes = ExcelExportHelper.GenerateOrganizationChargesExcel(
-      charges, clients, fromDate, toDate, folder, statementData);
+      charges, clients, fromDate, toDate, webRoot, statementData);
 
     File.WriteAllBytes(fullPath, bytes);
     return $"Invoices/{fileName}";

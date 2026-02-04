@@ -180,10 +180,10 @@ public static class ExcelExportHelper
 
   private static void CreateStatementSheet(IXLWorksheet ws, StatementSheetDto statementData, DateTime fromDate, DateTime toDate, string webRootPath)
   {
-    var period = statementData.StatementPeriod;
     var purple = XLColor.FromArgb(73, 7, 87);
+    var purpleTable = XLColor.FromArgb(102, 0, 102);
 
-    // Logo
+    // Logo (same as Clients/Charges sheets – A1, scale 0.5)
     var logoPath = Path.Combine(webRootPath, "Images", "seamlesscare_logo.png");
     if (File.Exists(logoPath))
       ws.AddPicture(logoPath).MoveTo(ws.Cell(1, 1)).Scale(0.5);
@@ -198,20 +198,20 @@ public static class ExcelExportHelper
       ws.Cell(2, 1).Style.Font.FontColor = XLColor.FromArgb(180, 120, 100);
     }
 
-    // Title: Pharmacy Services Statement as of {period}
-    ws.Cell(4, 1).Value = "Pharmacy Services Statement as of";
-    ws.Cell(4, 1).Style.Font.Bold = true;
-    var periodRange = ws.Range(4, 4, 4, 6);
-    periodRange.Merge();
-    periodRange.Value = period;
-    periodRange.Style.Fill.BackgroundColor = purple;
-    periodRange.Style.Font.FontColor = XLColor.White;
-    periodRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+    // Date/title (same as other sheets – D1:F1 merged, "MMM-yy Statement", purple, white, centered)
+    var statementRange = ws.Range(1, 4, 1, 6);
+    statementRange.Merge();
+    statementRange.Value = $"{fromDate:MMM-yy} Statement";
+    statementRange.Style.Font.Bold = true;
+    statementRange.Style.Font.FontColor = XLColor.White;
+    statementRange.Style.Fill.BackgroundColor = purple;
+    statementRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+    statementRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
     // Intro text
-    ws.Cell(6, 1).Value = "Thank you for your business. Please find below a summary of your statement.";
-    ws.Cell(8, 1).Value = "Clients: Summary of the charges by Patient & Program / Home";
-    ws.Cell(9, 1).Value = "Charges: Details for all the charges included in this statement.";
+    ws.Cell(4, 1).Value = "Thank you for your business. Please find below a summary of your statement.";
+    ws.Cell(6, 1).Value = "Clients: Summary of the charges by Patient & Program / Home";
+    ws.Cell(8, 1).Value = "Charges: Details for all the charges included in this statement.";
 
     // TO block (left) - rows 12-20
     const int toRowStart = 12;
@@ -254,7 +254,7 @@ public static class ExcelExportHelper
     ws.Range(toRowStart, 4, toBoxEndRow, 7).Style.Border.InsideBorder = XLBorderStyleValues.Thin;
     ws.Range(toRowStart, 4, toBoxEndRow, 7).Style.Border.OutsideBorderColor = purple;
 
-    // Statement Summary table - start at row 23
+    // Statement Summary table (same header style as Clients/Charges – row 8 purple, white, centered)
     const int summaryRowStart = 23;
     ws.Cell(summaryRowStart, 1).Value = "Statement Summary";
     ws.Cell(summaryRowStart, 1).Style.Font.Bold = true;
@@ -265,8 +265,9 @@ public static class ExcelExportHelper
     var summaryHeaderRange = ws.Range(summaryHeaderRow, 1, summaryHeaderRow, summaryHeaders.Length);
     summaryHeaderRange.Style.Font.Bold = true;
     summaryHeaderRange.Style.Font.FontColor = XLColor.White;
-    summaryHeaderRange.Style.Fill.BackgroundColor = XLColor.FromArgb(102, 0, 102);
+    summaryHeaderRange.Style.Fill.BackgroundColor = purpleTable;
     summaryHeaderRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+    summaryHeaderRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
     var s = statementData.Summary;
     const int summaryDataRow = summaryHeaderRow + 1;
