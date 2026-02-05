@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -131,25 +131,42 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
             AND EXISTS (SELECT 1 FROM [{_databaseName}].dbo.ARPayment ap WHERE ap.ARID = ar.ID AND ap.Status IN (1, 2));";
 
     var clientSummaryQuery = $@"
-        SELECT
-            p.ID AS PatientId,
-            p.LastName + ', ' + p.FirstName AS PatientName,
-            w.ID AS WardId,
-            w.Name AS LocationHome,
-            MAX(ar.AccountNum) AS SeamLessCode,
-            SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
-            SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
-            SUM(ISNULL(ai.PaymentPending, 0)) AS PaymentsMade,
-            SUM(ISNULL(ai.Paid, 0)) AS OutstandingCharges
-        FROM [{_databaseName}].dbo.NHWard w
-        JOIN [{_databaseName}].dbo.Pat p ON p.NHWardID = w.ID
-        JOIN [{_databaseName}].dbo.AR ar ON ar.BillToPatID = p.ID
-        JOIN [{_databaseName}].dbo.ARInvoice ai ON ai.ARID = ar.ID
-        WHERE
-            w.ID IN (SELECT CAST(value AS BIGINT) FROM STRING_SPLIT(@WardIds, ','))
-            AND ai.InvoiceDate >= @FromDate
-            AND ai.InvoiceDate < DATEADD(DAY, 1, @ToDate)
-        GROUP BY p.ID, p.LastName, p.FirstName, w.ID, w.Name;";
+    SELECT
+        p.ID AS PatientId,
+        p.LastName + ', ' + p.FirstName AS PatientName,
+        w.ID AS WardId,
+        w.Name AS LocationHome,
+        MAX(ar.AccountNum) AS SeamLessCode,
+
+        SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
+        SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
+
+        SUM(ISNULL(apd.Amount, 0)) AS PaymentsMade,
+
+        SUM(ISNULL(ai.Paid, 0)) AS OutstandingCharges
+    FROM [{_databaseName}].dbo.NHWard w
+    JOIN [{_databaseName}].dbo.Pat p 
+        ON p.NHWardID = w.ID
+    JOIN [{_databaseName}].dbo.AR ar 
+        ON ar.BillToPatID = p.ID
+    JOIN [{_databaseName}].dbo.ARInvoice ai 
+        ON ai.ARID = ar.ID
+    LEFT JOIN [{_databaseName}].dbo.ARPaymentDetail apd
+        ON apd.InvoiceNum = ai.InvoiceNum
+    WHERE
+        w.ID IN (
+            SELECT CAST(value AS BIGINT)
+            FROM STRING_SPLIT(@WardIds, ',')
+        )
+        AND ai.InvoiceDate >= @FromDate
+        AND ai.InvoiceDate < DATEADD(DAY, 1, @ToDate)
+    GROUP BY
+        p.ID,
+        p.LastName,
+        p.FirstName,
+        w.ID,
+        w.Name;";
+
 
     using var connection = new SqlConnection(_connectionString);
     await connection.OpenAsync(ct);
