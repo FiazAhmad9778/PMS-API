@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -56,6 +56,8 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
     builder.HasIndex(p => p.Name);
     builder.HasIndex(p => p.PatientId);
     builder.HasIndex(p => p.Status);
+
+   
   }
 }
 

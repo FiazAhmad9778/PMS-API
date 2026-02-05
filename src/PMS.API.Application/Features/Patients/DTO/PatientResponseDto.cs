@@ -9,5 +9,6 @@ public class PatientResponseDto
   public string? DefaultEmail { get; set; }
   public string Status { get; set; } = "active";
   public DateTime CreatedDate { get; set; }
+  public string? InvoicePath { get; set; }
 }
 

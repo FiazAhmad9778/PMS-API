@@ -18,5 +18,7 @@ public class Organization : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public DateTime? ModifiedDate { get; set; }
   public long? ModifiedBy { get; set; }
   public bool IsDeleted { get; set; }
+
+  public List<InvoiceHistory> InvoiceHistoryList { get; set; } = new List<InvoiceHistory>();
 }
 

@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
@@ -100,7 +100,9 @@ public class GetPatientsLocalQueryHandler : RequestHandlerBase<GetPatientsLocalQ
         Address = x.Address,
         DefaultEmail = x.DefaultEmail,
         Status = x.Status,
-        CreatedDate = x.CreatedDate
+        CreatedDate = x.CreatedDate,
+        InvoicePath = x.InvoiceHistoryList.Where(h => h.PatientId == x.PatientId)
+        .OrderByDescending(h => h.CreatedDate).Select(h => h.FilePath).FirstOrDefault() ?? string.Empty
       })
       .ToListAsync(cancellationToken);
 

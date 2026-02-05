@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using PMS.API.Core.Domain.Interfaces;
 using PMS.API.SharedKernel.Interfaces;
 
@@ -26,6 +26,8 @@ public class InvoiceHistory : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public DateTime? ModifiedDate { get; set; }
   public long? ModifiedBy { get; set; }
   public bool IsDeleted { get; set; }
+  public Patient? Patient { get; set; }
+  public Organization? Organization { get; set; }
 
   public List<InvoiceHistoryWard> InvoiceHistoryWardList { get; set; }
 }

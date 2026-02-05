@@ -11,5 +11,6 @@ public class OrganizationResponseDto
   public string? DefaultEmail { get; set; }
   public DateTime CreatedDate { get; set; }
   public DateTime? ModifiedDate { get; set; }
+  public string? InvoicePath { get; set; }
 }
 

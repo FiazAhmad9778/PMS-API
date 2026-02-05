@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -46,5 +46,15 @@ public class InvoiceHistoryConfiguration : IEntityTypeConfiguration<InvoiceHisto
 
     builder.HasIndex(p => new { p.OrganizationId, p.InvoiceStartDate, p.InvoiceEndDate });
     builder.HasIndex(p => p.InvoiceStatus);
+
+    builder.HasOne(x => x.Patient)
+     .WithMany(x => x.InvoiceHistoryList)
+     .HasForeignKey(x => x.PatientId)
+     .OnDelete(DeleteBehavior.Cascade);
+
+    builder.HasOne(x => x.Organization)
+    .WithMany(x => x.InvoiceHistoryList)
+    .HasForeignKey(x => x.OrganizationId)
+    .OnDelete(DeleteBehavior.Cascade);
   }
 }
