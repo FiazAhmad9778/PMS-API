@@ -1,9 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common.Constants;
 using PMS.API.Application.Common.Helpers;
 using PMS.API.Application.Services.Interfaces;
-using PMS.API.Application.Features.Patients.DTO;
 using PMS.API.Core.Domain.Entities;
 using PMS.API.Infrastructure.Data;
 
@@ -28,7 +27,7 @@ public class InvoiceProcessingService : IInvoiceProcessingService
   public async Task ProcessPendingInvoicesAsync(CancellationToken cancellationToken = default)
   {
     var pending = await _appDbContext.InvoiceHistory
-      .Where(h => h.InvoiceStatus == InvoiceStatusConstants.Pending && !h.IsDeleted)
+      .Where(h => (h.InvoiceStatus == InvoiceStatusConstants.Pending) && !h.IsDeleted)
       .Include(h => h.InvoiceHistoryWardList)
       .OrderBy(h => h.CreatedDate)
       .ToListAsync(cancellationToken);

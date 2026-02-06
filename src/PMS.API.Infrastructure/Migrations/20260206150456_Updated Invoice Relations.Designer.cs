@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMS.API.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PMS.API.Infrastructure.Data;
 namespace PMS.API.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260206150456_Updated Invoice Relations")]
+    partial class UpdatedInvoiceRelations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -991,9 +994,6 @@ namespace PMS.API.Infrastructure.Migrations
                         .HasDefaultValue("active")
                         .HasColumnName("status");
 
-                    b.Property<long?>("WardId")
-                        .HasColumnType("bigint");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Name");
@@ -1001,8 +1001,6 @@ namespace PMS.API.Infrastructure.Migrations
                     b.HasIndex("PatientId");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("WardId");
 
                     b.ToTable("Patient", (string)null);
                 });
@@ -1172,16 +1170,6 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Navigation("InvoiceHistory");
                 });
 
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Patient", b =>
-                {
-                    b.HasOne("PMS.API.Core.Domain.Entities.Ward", "Ward")
-                        .WithMany("Patients")
-                        .HasForeignKey("WardId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Ward");
-                });
-
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Ward", b =>
                 {
                     b.HasOne("PMS.API.Core.Domain.Entities.Organization", "Organization")
@@ -1217,11 +1205,6 @@ namespace PMS.API.Infrastructure.Migrations
             modelBuilder.Entity("PMS.API.Core.Domain.Entities.Patient", b =>
                 {
                     b.Navigation("InvoiceHistoryList");
-                });
-
-            modelBuilder.Entity("PMS.API.Core.Domain.Entities.Ward", b =>
-                {
-                    b.Navigation("Patients");
                 });
 #pragma warning restore 612, 618
         }

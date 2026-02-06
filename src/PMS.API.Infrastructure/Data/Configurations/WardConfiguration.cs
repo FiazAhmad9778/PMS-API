@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -52,5 +52,6 @@ public class WardConfiguration : IEntityTypeConfiguration<Ward>
         .WithMany(o => o.Wards)
         .HasForeignKey(w => w.OrganizationId)
         .OnDelete(DeleteBehavior.SetNull);
+
   }
 }

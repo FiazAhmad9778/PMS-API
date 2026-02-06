@@ -101,7 +101,7 @@ public class GetPatientsLocalQueryHandler : RequestHandlerBase<GetPatientsLocalQ
         DefaultEmail = x.DefaultEmail,
         Status = x.Status,
         CreatedDate = x.CreatedDate,
-        InvoicePath = x.InvoiceHistoryList.Where(h => h.PatientId == x.PatientId)
+        InvoicePath = x.InvoiceHistoryList.Where(h => h.PatientId == x.Id)
         .OrderByDescending(h => h.CreatedDate).Select(h => h.FilePath).FirstOrDefault() ?? string.Empty
       })
       .ToListAsync(cancellationToken);

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -74,17 +74,28 @@ public class RequestInvoiceCommandHandler : RequestHandlerBase<RequestInvoiceCom
   }
 
   private async Task ProcessOrganizationInvoice(
-    long organizationId,
+    long organizationExternalId,
     RequestInvoiceCommand request,
     CancellationToken ct)
   {
-    var externalOrganizationId = await _appDbContext.Organization.Where(x => x.OrganizationExternalId == organizationId).Select(x => x.Id).FirstOrDefaultAsync();
-    var wardIds = await _appDbContext.Ward
-        .Where(w => w.OrganizationId == externalOrganizationId)
-        .Select(w => w.ExternalId)
+    var organizationId = await _appDbContext.Organization
+        .Where(x => x.OrganizationExternalId == organizationExternalId)
+        .Select(x => x.Id)
+        .FirstOrDefaultAsync(ct);
+
+    if (organizationId == 0)
+      return;
+
+    var wardsWithPatients = await _appDbContext.Ward
+        .Where(w => w.OrganizationId == organizationId)
+        .Select(w => new
+        {
+          WardId = w.Id,
+          PatientIds = w.Patients.Select(p => p.Id).ToList()
+        })
         .ToListAsync(ct);
 
-    if (!wardIds.Any())
+    if (!wardsWithPatients.Any())
       return;
 
     var exists = await _appDbContext.InvoiceHistory
@@ -109,13 +120,25 @@ public class RequestInvoiceCommandHandler : RequestHandlerBase<RequestInvoiceCom
       FilePath = null,
       IsSent = request.IsSent,
       CreatedBy = _currentUserService.UserId,
-      CreatedDate = DateTime.UtcNow
+      CreatedDate = DateTime.UtcNow,
+      InvoiceHistoryWardList = wardsWithPatients
+            .Where(w => w.PatientIds.Any())
+            .Select(w => new InvoiceHistoryWard
+            {
+              WardId = w.WardId,
+              PatientIds = string.Join(",", w.PatientIds)
+            })
+            .ToList()
     };
-    InvoiceStatusHistoryHelper.AppendStatus(history, InvoiceStatusConstants.Pending);
+
+    InvoiceStatusHistoryHelper.AppendStatus(
+        history,
+        InvoiceStatusConstants.Pending);
 
     _appDbContext.InvoiceHistory.Add(history);
     await _appDbContext.SaveChangesAsync(ct);
   }
+
 
   private async Task ProcessPatientInvoice(
     long patientId,

@@ -17,4 +17,5 @@ public class Ward : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public DateTime? ModifiedDate { get; set; }
   public long? ModifiedBy { get; set; }
   public bool IsDeleted { get; set; }
+  public List<Patient> Patients { get; set; } = new List<Patient>();
 }

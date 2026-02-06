@@ -130,7 +130,7 @@ public class GetOrganizationsQueryHandler : RequestHandlerBase<GetOrganizationsQ
           CreatedDate = x.CreatedDate,
           ModifiedDate = x.ModifiedDate,
           WardIds = x.Wards.Select(w => w.Id).ToArray(),
-          InvoicePath = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.OrganizationExternalId)
+          InvoicePath = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
                         .OrderByDescending(h => h.CreatedDate).Select(h => h.FilePath).FirstOrDefault() ?? string.Empty,
           Wards = x.Wards.Select(w => new WardResponseDto
           {

@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using PMS.API.Application.Common.ConectionStringHelper;
-using PMS.API.Application.Common.Helpers;
 using PMS.API.Application.Common.Options;
 using PMS.API.Application.Features.Patients.DTO;
 using PMS.API.Application.Services.Interfaces;
@@ -40,37 +39,35 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
     DateTime toDate,
     CancellationToken cancellationToken = default)
   {
-    var externalOrganizationId = await _appDbContext.Organization
-      .Where(x => x.OrganizationExternalId == organizationId)
-      .Select(x => x.Id)
-      .FirstOrDefaultAsync(cancellationToken);
-
-    var wardIds = await _appDbContext.Ward
-      .Where(w => w.OrganizationId == externalOrganizationId)
-      .Select(w => w.ExternalId)
-      .ToListAsync(cancellationToken);
-
-    if (wardIds.Count == 0)
-      return (null, null);
-
-    var (charges, clients) = await FetchChargesByWardIdsAsync(wardIds, fromDate, toDate, cancellationToken);
-    if (charges.Count == 0)
-      return (null, null);
-
     var organization = await _appDbContext.Organization
-      .Where(x => x.OrganizationExternalId == organizationId)
-      .Select(x => new { x.Name, x.Address })
+      .Where(x => x.Id == organizationId)
       .FirstOrDefaultAsync(cancellationToken);
 
-    var statementData = BuildStatementSheetDto(
-      organization?.Name ?? string.Empty,
-      organization?.Address,
-      clients,
-      fromDate,
-      toDate);
+    if (organization is not null)
+    {
+      var wardIds = await _appDbContext.Ward
+        .Where(w => w.OrganizationId == organization.Id)
+        .Select(w => w.ExternalId)
+        .ToListAsync(cancellationToken);
 
-    var filePath = SaveExcelFile(charges, clients, $"ORG_{organizationId}", fromDate, toDate, statementData);
-    return (filePath, charges);
+      if (wardIds.Count == 0)
+        return (null, null);
+
+      var (charges, clients) = await FetchChargesByWardIdsAsync(wardIds, fromDate, toDate, cancellationToken);
+      if (charges.Count == 0)
+        return (null, null);
+
+      var statementData = BuildStatementSheetDto(
+        organization?.Name ?? string.Empty,
+        organization?.Address,
+        clients,
+        fromDate,
+        toDate);
+
+      var filePath = SaveExcelFile(charges, clients, $"ORG_{organizationId}", fromDate, toDate, statementData);
+      return (filePath, charges);
+    }
+    return (string.Empty, new List<PatientFinancialResponseDto>());
   }
 
   public async Task<string?> GeneratePatientInvoiceAsync(
@@ -79,12 +76,13 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
     DateTime toDate,
     CancellationToken cancellationToken = default)
   {
-    var (charges, clients) = await FetchChargesByPatientIdAsync(patientId, fromDate, toDate, cancellationToken);
+    var patientexternalId = await _appDbContext.Patient.Where(x => x.Id == patientId).Select(x => x.PatientId).FirstOrDefaultAsync();
+    var (charges, clients) = await FetchChargesByPatientIdAsync(patientexternalId, fromDate, toDate, cancellationToken);
     if (charges.Count == 0)
       return null;
 
     var patient = await _appDbContext.Patient
-      .Where(x => x.PatientId == patientId)
+      .Where(x => x.PatientId == patientexternalId)
       .Select(x => new { x.Name, x.Address })
       .FirstOrDefaultAsync(cancellationToken);
 
@@ -94,6 +92,16 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
       clients,
       fromDate,
       toDate);
+
+    clients.ForEach(x =>
+    {
+      if (string.IsNullOrWhiteSpace(x.LocationHome) ||
+          string.Equals(x.LocationHome, "N/A", StringComparison.OrdinalIgnoreCase))
+      {
+        x.LocationHome = patient?.Address;
+      }
+    });
+
 
     return SaveExcelFile(charges, clients, $"PAT_{patientId}", fromDate, toDate, statementData);
   }

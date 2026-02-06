@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
 using PMS.API.Application.Common.Models;
+using PMS.API.Application.Features.Organizations.DTO;
 using PMS.API.Core.Domain.Entities;
 using PMS.API.Infrastructure.Data;
 using System.ComponentModel.DataAnnotations;
@@ -44,11 +45,12 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
     _dbContext = dbContext;
   }
 
-  protected override async Task<ApplicationResult<long>> HandleRequest(CreateOrganizationCommand request, CancellationToken cancellationToken)
+  protected override async Task<ApplicationResult<long>> HandleRequest(
+    CreateOrganizationCommand request,
+    CancellationToken cancellationToken)
   {
     try
     {
-      // 1. Fetch organization + wards from PMS DB (WardIds are external/PMS ward IDs)
       var sql = @"
             SELECT 
                 nh.ID as OrganizationId,
@@ -61,14 +63,12 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
             WHERE nh.ID = @OrganizationExternalId";
 
       if (request.WardIds != null && request.WardIds.Length > 0)
-      {
         sql += " AND w.ID IN @WardIds";
-      }
 
-      var connectionString = _configuration.GetConnectionString("ARDashboardConnection")
-          ?? throw new InvalidOperationException("Connection string 'ARDashboardConnection' not found.");
+      using var connection = new SqlConnection(
+          _configuration.GetConnectionString("ARDashboardConnection")
+          ?? throw new InvalidOperationException("Connection string not found"));
 
-      using var connection = new SqlConnection(connectionString);
       await connection.OpenAsync(cancellationToken);
 
       var data = (await connection.QueryAsync<PmsOrgWardRow>(
@@ -87,25 +87,26 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
 
       var firstRow = data.First();
 
-      // 2. Resolve our organization (by external org ID)
-      var organizationEntity = await _dbContext.Organization
+      var organization = await _dbContext.Organization
           .Include(o => o.Wards)
-          .FirstOrDefaultAsync(o => o.OrganizationExternalId == request.OrganizationExternalId, cancellationToken);
+          .FirstOrDefaultAsync(
+              o => o.OrganizationExternalId == request.OrganizationExternalId,
+              cancellationToken);
 
-      if (organizationEntity != null)
+      if (organization != null)
       {
-        // 3a. Org exists: save wards in our DB that don't already exist for this org
-        var existingExternalWardIds = organizationEntity.Wards
+        // 3a. Existing org → add missing wards
+        var existingWardExternalIds = organization.Wards
             .Select(w => w.ExternalId)
             .ToHashSet();
 
         var newWards = wardsFromPms
-            .Where(d => !existingExternalWardIds.Contains(d.WardId!.Value))
-            .Select(d => new Ward
+            .Where(w => !existingWardExternalIds.Contains(w.WardId!.Value))
+            .Select(w => new Ward
             {
-              ExternalId = d.WardId!.Value,
-              Name = d.WardName ?? string.Empty,
-              OrganizationId = organizationEntity.Id,
+              ExternalId = w.WardId!.Value,
+              Name = w.WardName ?? string.Empty,
+              OrganizationId = organization.Id,
               CreatedDate = DateTime.UtcNow
             })
             .ToList();
@@ -116,23 +117,32 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
           await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        Logger.LogInformation("Organization (external {ExternalId}) already exists; added {Count} new ward(s).", request.OrganizationExternalId, newWards.Count);
-        return ApplicationResult<long>.SuccessResult(organizationEntity.Id);
+        // Reload wards to include newly inserted ones
+        organization.Wards = await _dbContext.Ward
+            .Where(w => w.OrganizationId == organization.Id)
+            .ToListAsync(cancellationToken);
+
+        // Sync patients
+        await SyncPatientsAsync(organization, organization.Wards, cancellationToken);
+
+        return ApplicationResult<long>.SuccessResult(organization.Id);
       }
 
-      // 3b. Org does not exist: create org and save wards linked to it
-      organizationEntity = new Organization
+      // New organization
+      organization = new Organization
       {
         OrganizationExternalId = request.OrganizationExternalId,
         Name = firstRow.OrganizationName ?? request.Name ?? string.Empty,
         Address = firstRow.Address ?? request.Address ?? string.Empty,
-        DefaultEmail = string.IsNullOrWhiteSpace(request.DefaultEmail) ? null : request.DefaultEmail,
-        CreatedDate = DateTime.UtcNow,
+        DefaultEmail = string.IsNullOrWhiteSpace(request.DefaultEmail)
+              ? null
+              : request.DefaultEmail,
+        CreatedDate = DateTime.UtcNow
       };
 
       foreach (var row in wardsFromPms)
       {
-        organizationEntity.Wards.Add(new Ward
+        organization.Wards.Add(new Ward
         {
           ExternalId = row.WardId!.Value,
           Name = row.WardName ?? string.Empty,
@@ -140,27 +150,107 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
         });
       }
 
-      _dbContext.Organization.Add(organizationEntity);
+      _dbContext.Organization.Add(organization);
       await _dbContext.SaveChangesAsync(cancellationToken);
 
-      Logger.LogInformation("Created organization '{Name}' (external {ExternalId}) with ID {Id} and {WardCount} ward(s).",
-          organizationEntity.Name, request.OrganizationExternalId, organizationEntity.Id, wardsFromPms.Count);
+      await SyncPatientsAsync(organization, organization.Wards, cancellationToken);
 
-      return ApplicationResult<long>.SuccessResult(organizationEntity.Id);
+      return ApplicationResult<long>.SuccessResult(organization.Id);
     }
     catch (Exception ex)
     {
-      Logger.LogError(ex, "Error saving organization (external {ExternalId}): {Message}", request.OrganizationExternalId, ex.Message);
+      Logger.LogError(ex,
+          "Error saving organization (external {ExternalId})",
+          request.OrganizationExternalId);
+
       return ApplicationResult<long>.Error("Failed to save organization and wards.");
     }
   }
 
-  private sealed class PmsOrgWardRow
+  private async Task<List<PmsPatientRow>> FetchPatientsFromPms(
+    IEnumerable<long> wardExternalIds,
+    CancellationToken ct)
   {
-    public long OrganizationId { get; init; }
-    public string? OrganizationName { get; init; }
-    public string? Address { get; init; }
-    public long? WardId { get; init; }
-    public string? WardName { get; init; }
+    var sql = @"
+        SELECT
+            p.ID AS PatientExternalId,
+            p.FirstName + ' ' + p.LastName AS PatientName,
+            p.Email,
+            p.Address1 AS Address,
+            p.NHWardID AS WardExternalId
+        FROM dbo.PAT p
+        WHERE p.NHWardID IN @WardExternalIds";
+
+    using var connection = new SqlConnection(
+        _configuration.GetConnectionString("ARDashboardConnection"));
+
+    await connection.OpenAsync(ct);
+
+    return (await connection.QueryAsync<PmsPatientRow>(
+        sql,
+        new { WardExternalIds = wardExternalIds }))
+        .ToList();
   }
+  private async Task SyncPatientsAsync(
+     Organization organization,
+     List<Ward> wards,
+     CancellationToken ct)
+  {
+    if (wards == null || !wards.Any())
+      return;
+
+    // 1. External ward IDs (PMS)
+    var wardExternalIds = wards
+        .Select(w => w.ExternalId)
+        .ToList();
+
+    // 2. Fetch patients from PMS
+    var pmsPatients = await FetchPatientsFromPms(wardExternalIds, ct);
+    if (!pmsPatients.Any())
+      return;
+
+    // 3. Map PMS WardExternalId → Local Ward
+    var wardMap = wards.ToDictionary(w => w.ExternalId, w => w);
+
+    // 4. Local ward IDs (nullable-safe)
+    var localWardIds = wards.Select(w => w.Id).ToList();
+
+    List<Patient> existingPatients = new List<Patient>();
+    try
+    {
+     existingPatients = await _dbContext.Patient.Where(x => localWardIds.Contains(x.WardId.GetValueOrDefault())).ToListAsync();
+
+    }
+    catch (Exception)
+    {
+      throw;
+    }
+
+    // 6. Existing external patient IDs
+    var existingPatientExternalIds = existingPatients
+        .Select(p => p.PatientId)
+        .ToHashSet();
+
+    // 7. New patients to insert
+    var newPatients = pmsPatients
+        .Where(p => !existingPatientExternalIds.Contains(p.PatientExternalId))
+        .Select(p => new Patient
+        {
+          PatientId = p.PatientExternalId,
+          Name = p.PatientName,
+          DefaultEmail = p.Email,
+          Address = p.Address,
+          WardId = wardMap[p.WardExternalId].Id,
+          CreatedDate = DateTime.UtcNow
+        })
+        .ToList();
+
+    // 8. Save
+    if (newPatients.Any())
+    {
+      _dbContext.Patient.AddRange(newPatients);
+      await _dbContext.SaveChangesAsync(ct);
+    }
+  }
+
 }
