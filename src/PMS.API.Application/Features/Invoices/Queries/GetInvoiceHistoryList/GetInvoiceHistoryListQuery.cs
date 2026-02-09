@@ -36,33 +36,18 @@ public class GetInvoiceHistoryListQueryHandler : RequestHandlerBase<GetInvoiceHi
     var hasOrgFilter = request.OrganizationIds != null && request.OrganizationIds.Count > 0;
     var hasPatientFilter = request.PatientIds != null && request.PatientIds.Count > 0;
 
-    List<long> externalOrgIds = new List<long>();
-    List<long> externalPatientIds = new List<long>();
-
-    if (hasOrgFilter)
-      externalOrgIds = await _appDbContext.Organization
-        .Where(o => !o.IsDeleted && request.OrganizationIds!.Contains(o.Id))
-        .Select(o => o.OrganizationExternalId)
-        .ToListAsync(cancellationToken);
-
-    if (hasPatientFilter)
-      externalPatientIds = await _appDbContext.Patient
-        .Where(p => !p.IsDeleted && request.PatientIds!.Contains(p.Id))
-        .Select(p => p.PatientId)
-        .ToListAsync(cancellationToken);
-
     var query = _appDbContext.InvoiceHistory
       .AsNoTracking()
       .Where(h => !h.IsDeleted);
 
     if (hasOrgFilter && hasPatientFilter)
       query = query.Where(h =>
-        (h.OrganizationId != null && externalOrgIds.Contains(h.OrganizationId.Value)) ||
-        (h.PatientId != null && externalPatientIds.Contains(h.PatientId.Value)));
+        (h.OrganizationId != null && request.OrganizationIds!.Contains(h.OrganizationId.Value)) ||
+        (h.PatientId != null && request.PatientIds!.Contains(h.PatientId.Value)));
     else if (hasOrgFilter)
-      query = query.Where(h => h.OrganizationId != null && externalOrgIds.Contains(h.OrganizationId.Value));
+      query = query.Where(h => h.OrganizationId != null && request.OrganizationIds!.Contains(h.OrganizationId.Value));
     else if (hasPatientFilter)
-      query = query.Where(h => h.PatientId != null && externalPatientIds.Contains(h.PatientId.Value));
+      query = query.Where(h => h.PatientId != null && request.PatientIds!.Contains(h.PatientId.Value));
     // else: no filter = return all
 
     var list = await query
@@ -84,30 +69,32 @@ public class GetInvoiceHistoryListQueryHandler : RequestHandlerBase<GetInvoiceHi
     if (list.Count == 0)
       return ApplicationResult<List<InvoiceHistoryItemDto>>.SuccessResult(new List<InvoiceHistoryItemDto>(), 0);
 
-    var orgExternalIds = list.Where(x => x.OrganizationId.HasValue).Select(x => x.OrganizationId!.Value).Distinct().ToList();
-    var patientExternalIds = list.Where(x => x.PatientId.HasValue).Select(x => x.PatientId!.Value).Distinct().ToList();
+    var orgInternalIds = list.Where(x => x.OrganizationId.HasValue).Select(x => x.OrganizationId!.Value).Distinct().ToList();
+    var patientInternalIds = list.Where(x => x.PatientId.HasValue).Select(x => x.PatientId!.Value).Distinct().ToList();
 
-    var orgMap = await _appDbContext.Organization
-      .Where(o => !o.IsDeleted && orgExternalIds.Contains(o.OrganizationExternalId))
-      .Select(o => new { o.OrganizationExternalId, o.Id })
-      .ToListAsync(cancellationToken);
-    var orgLookup = orgMap.ToDictionary(x => x.OrganizationExternalId, x => x.Id);
+    var orgNameMap = orgInternalIds.Count > 0
+      ? await _appDbContext.Organization
+          .Where(o => !o.IsDeleted && orgInternalIds.Contains(o.Id))
+          .ToDictionaryAsync(o => o.Id, o => o.Name, cancellationToken)
+      : new Dictionary<long, string>();
 
-    var patientMap = await _appDbContext.Patient
-      .Where(p => !p.IsDeleted && patientExternalIds.Contains(p.PatientId))
-      .Select(p => new { p.PatientId, p.Id })
-      .ToListAsync(cancellationToken);
-    var patientLookup = patientMap.ToDictionary(x => x.PatientId, x => x.Id);
+    var patientNameMap = patientInternalIds.Count > 0
+      ? await _appDbContext.Patient
+          .Where(p => !p.IsDeleted && patientInternalIds.Contains(p.Id))
+          .ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken)
+      : new Dictionary<long, string>();
 
     var dtos = list.Select(h =>
     {
       var isOrg = h.OrganizationId.HasValue;
+      var name = isOrg
+        ? (h.OrganizationId.HasValue && orgNameMap.TryGetValue(h.OrganizationId.Value, out var on) ? on : null)
+        : (h.PatientId.HasValue && patientNameMap.TryGetValue(h.PatientId.Value, out var pn) ? pn : null);
       return new InvoiceHistoryItemDto
       {
         Id = h.Id,
         InvoiceType = isOrg ? "Organization" : "Patient",
-        OrganizationInternalId = h.OrganizationId.HasValue && orgLookup.TryGetValue(h.OrganizationId.Value, out var oid) ? oid : null,
-        PatientInternalId = h.PatientId.HasValue && patientLookup.TryGetValue(h.PatientId.Value, out var pid) ? pid : null,
+        Name = name,
         InvoiceStatus = h.InvoiceStatus,
         FilePath = h.FilePath,
         DownloadUrl = string.IsNullOrEmpty(h.FilePath) ? null : $"api/Invoice/download/{h.Id}",

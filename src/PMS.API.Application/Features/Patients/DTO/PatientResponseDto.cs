@@ -1,4 +1,4 @@
-﻿namespace PMS.API.Application.Features.Patients.DTO;
+namespace PMS.API.Application.Features.Patients.DTO;
 
 public class PatientResponseDto
 {
@@ -10,5 +10,11 @@ public class PatientResponseDto
   public string Status { get; set; } = "active";
   public DateTime CreatedDate { get; set; }
   public string? InvoicePath { get; set; }
+  /// <summary>True if the latest invoice for this patient has been sent. Enables resend icon in UI.</summary>
+  public bool? InvoiceIsSent { get; set; }
+  /// <summary>Pending invoice period start (when used in get-pending-invoices).</summary>
+  public DateTime? InvoiceFromDate { get; set; }
+  /// <summary>Pending invoice period end (when used in get-pending-invoices).</summary>
+  public DateTime? InvoiceToDate { get; set; }
 }
 

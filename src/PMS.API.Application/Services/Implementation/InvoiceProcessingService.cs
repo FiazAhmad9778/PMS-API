@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common.Constants;
 using PMS.API.Application.Common.Helpers;
@@ -79,16 +79,28 @@ public class InvoiceProcessingService : IInvoiceProcessingService
     InvoiceStatusHistoryHelper.AppendStatus(record, InvoiceStatusConstants.Completed);
     record.ModifiedDate = DateTime.UtcNow;
 
-    record.InvoiceHistoryWardList?.Clear();
-    foreach (var g in charges.GroupBy(x => x.WardId))
+    // Update PatientIds from Kroll when invoice is generated (wards already exist with empty PatientIds)
+    if (record.InvoiceHistoryWardList != null && record.InvoiceHistoryWardList.Count > 0)
     {
-      record.InvoiceHistoryWardList ??= new List<InvoiceHistoryWard>();
-      record.InvoiceHistoryWardList.Add(new InvoiceHistoryWard
+      var wardList = await _appDbContext.Ward
+        .AsNoTracking()
+        .Where(w => w.OrganizationId == record.OrganizationId)
+        .Select(w => new { w.Id, w.ExternalId })
+        .ToListAsync(ct);
+      var localWardToKroll = wardList.ToDictionary(w => w.Id, w => w.ExternalId);
+
+      var chargesByKrollWardId = charges
+        .GroupBy(x => x.WardId)
+        .ToDictionary(g => g.Key, g => g.Select(x => x.PatientId).Distinct().ToList());
+
+      foreach (var ward in record.InvoiceHistoryWardList)
       {
-        InvoiceHistoryId = record.Id,
-        WardId = g.Key,
-        PatientIds = string.Join(",", g.Select(x => x.PatientId).Distinct())
-      });
+        if (localWardToKroll.TryGetValue(ward.WardId, out var krollWardId) &&
+            chargesByKrollWardId.TryGetValue(krollWardId, out var patientIds))
+        {
+          ward.PatientIds = string.Join(",", patientIds);
+        }
+      }
     }
   }
 

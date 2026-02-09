@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Dapper;
 using System.Data;
 using MediatR;
@@ -82,7 +82,7 @@ SELECT
     SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
     SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
     CAST(SUM(ISNULL(ai.PaymentPending, 0)) AS NUMERIC(18,2)) AS PaymentsMade,
-    SUM(ISNULL(ai.Paid, 0)) AS OutstandingCharges
+    (SUM(ISNULL(ai.SubTotal, 0)) + SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) - SUM(ISNULL(ai.PaymentPending, 0))) AS OutstandingCharges
 FROM dbo.Pat p
 INNER JOIN dbo.NHWard w ON w.ID = p.NHWardID
 INNER JOIN dbo.AR ar ON ar.BillToPatId = p.ID

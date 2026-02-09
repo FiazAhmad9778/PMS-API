@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -91,7 +91,7 @@ public class RequestInvoiceCommandHandler : RequestHandlerBase<RequestInvoiceCom
         .Select(w => new
         {
           WardId = w.Id,
-          PatientIds = w.Patients.Select(p => p.Id).ToList()
+          PatientIds = new List<long>()
         })
         .ToListAsync(ct);
 
@@ -122,7 +122,6 @@ public class RequestInvoiceCommandHandler : RequestHandlerBase<RequestInvoiceCom
       CreatedBy = _currentUserService.UserId,
       CreatedDate = DateTime.UtcNow,
       InvoiceHistoryWardList = wardsWithPatients
-            .Where(w => w.PatientIds.Any())
             .Select(w => new InvoiceHistoryWard
             {
               WardId = w.WardId,

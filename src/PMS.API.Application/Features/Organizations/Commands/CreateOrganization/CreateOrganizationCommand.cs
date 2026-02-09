@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -122,9 +122,6 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
             .Where(w => w.OrganizationId == organization.Id)
             .ToListAsync(cancellationToken);
 
-        // Sync patients
-        await SyncPatientsAsync(organization, organization.Wards, cancellationToken);
-
         return ApplicationResult<long>.SuccessResult(organization.Id);
       }
 
@@ -153,8 +150,6 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
       _dbContext.Organization.Add(organization);
       await _dbContext.SaveChangesAsync(cancellationToken);
 
-      await SyncPatientsAsync(organization, organization.Wards, cancellationToken);
-
       return ApplicationResult<long>.SuccessResult(organization.Id);
     }
     catch (Exception ex)
@@ -164,92 +159,6 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
           request.OrganizationExternalId);
 
       return ApplicationResult<long>.Error("Failed to save organization and wards.");
-    }
-  }
-
-  private async Task<List<PmsPatientRow>> FetchPatientsFromPms(
-    IEnumerable<long> wardExternalIds,
-    CancellationToken ct)
-  {
-    var sql = @"
-        SELECT
-            p.ID AS PatientExternalId,
-            p.FirstName + ' ' + p.LastName AS PatientName,
-            p.Email,
-            p.Address1 AS Address,
-            p.NHWardID AS WardExternalId
-        FROM dbo.PAT p
-        WHERE p.NHWardID IN @WardExternalIds";
-
-    using var connection = new SqlConnection(
-        _configuration.GetConnectionString("ARDashboardConnection"));
-
-    await connection.OpenAsync(ct);
-
-    return (await connection.QueryAsync<PmsPatientRow>(
-        sql,
-        new { WardExternalIds = wardExternalIds }))
-        .ToList();
-  }
-  private async Task SyncPatientsAsync(
-     Organization organization,
-     List<Ward> wards,
-     CancellationToken ct)
-  {
-    if (wards == null || !wards.Any())
-      return;
-
-    // 1. External ward IDs (PMS)
-    var wardExternalIds = wards
-        .Select(w => w.ExternalId)
-        .ToList();
-
-    // 2. Fetch patients from PMS
-    var pmsPatients = await FetchPatientsFromPms(wardExternalIds, ct);
-    if (!pmsPatients.Any())
-      return;
-
-    // 3. Map PMS WardExternalId → Local Ward
-    var wardMap = wards.ToDictionary(w => w.ExternalId, w => w);
-
-    // 4. Local ward IDs (nullable-safe)
-    var localWardIds = wards.Select(w => w.Id).ToList();
-
-    List<Patient> existingPatients = new List<Patient>();
-    try
-    {
-     existingPatients = await _dbContext.Patient.Where(x => localWardIds.Contains(x.WardId.GetValueOrDefault())).ToListAsync();
-
-    }
-    catch (Exception)
-    {
-      throw;
-    }
-
-    // 6. Existing external patient IDs
-    var existingPatientExternalIds = existingPatients
-        .Select(p => p.PatientId)
-        .ToHashSet();
-
-    // 7. New patients to insert
-    var newPatients = pmsPatients
-        .Where(p => !existingPatientExternalIds.Contains(p.PatientExternalId))
-        .Select(p => new Patient
-        {
-          PatientId = p.PatientExternalId,
-          Name = p.PatientName,
-          DefaultEmail = p.Email,
-          Address = p.Address,
-          WardId = wardMap[p.WardExternalId].Id,
-          CreatedDate = DateTime.UtcNow
-        })
-        .ToList();
-
-    // 8. Save
-    if (newPatients.Any())
-    {
-      _dbContext.Patient.AddRange(newPatients);
-      await _dbContext.SaveChangesAsync(ct);
     }
   }
 

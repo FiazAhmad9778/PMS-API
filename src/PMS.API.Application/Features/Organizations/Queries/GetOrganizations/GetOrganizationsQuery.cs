@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
@@ -130,8 +130,15 @@ public class GetOrganizationsQueryHandler : RequestHandlerBase<GetOrganizationsQ
           CreatedDate = x.CreatedDate,
           ModifiedDate = x.ModifiedDate,
           WardIds = x.Wards.Select(w => w.Id).ToArray(),
+          // Latest invoice by last created (CreatedDate), not by invoice period from/to
           InvoicePath = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
-                        .OrderByDescending(h => h.CreatedDate).Select(h => h.FilePath).FirstOrDefault() ?? string.Empty,
+                        .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => h.FilePath).FirstOrDefault() ?? string.Empty,
+          InvoiceIsSent = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
+                        .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => (bool?)h.IsSent).FirstOrDefault(),
+          InvoiceFromDate = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
+                        .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => (DateTime?)h.InvoiceStartDate).FirstOrDefault(),
+          InvoiceToDate = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
+                        .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => (DateTime?)h.InvoiceEndDate).FirstOrDefault(),
           Wards = x.Wards.Select(w => new WardResponseDto
           {
             Id = w.Id,

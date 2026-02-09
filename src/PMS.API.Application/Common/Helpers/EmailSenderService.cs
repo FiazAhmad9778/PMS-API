@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using PMS.API.Infrastructure.Data;
@@ -160,6 +161,52 @@ public class EmailSenderService : IEmailSenderService
     }
     catch (Exception)
     {
+      return false;
+    }
+  }
+
+  public async Task<bool> SendEmailWithAttachment(string toEmail, string toName, string subject, string body, string attachmentFilePath, string? attachmentFileName = null)
+  {
+    try
+    {
+      if (!File.Exists(attachmentFilePath))
+        return false;
+
+      var smtpHost = _configuration["Smtp:Host"];
+      var smtpPort = int.Parse(_configuration["Smtp:Port"] ?? "587");
+      var smtpEmail = _configuration["Smtp:Email"];
+      var smtpPassword = _configuration["Smtp:Password"];
+      var senderName = _configuration["Smtp:SenderName"];
+      if (smtpEmail == null) return false;
+
+      using var smtpClient = new SmtpClient(smtpHost)
+      {
+        Port = smtpPort,
+        EnableSsl = true,
+        UseDefaultCredentials = false,
+        Credentials = new NetworkCredential(smtpEmail, smtpPassword)
+      };
+
+      var htmlBody = GenerateEmailHtmlBody(body);
+      var mailMessage = new MailMessage
+      {
+        From = new MailAddress(smtpEmail, senderName),
+        Subject = subject,
+        Body = htmlBody,
+        IsBodyHtml = true
+      };
+      mailMessage.To.Add(new MailAddress(toEmail));
+
+      var attachment = new Attachment(attachmentFilePath, MediaTypeNames.Application.Octet);
+      attachment.Name = attachmentFileName ?? Path.GetFileName(attachmentFilePath);
+      mailMessage.Attachments.Add(attachment);
+
+      await smtpClient.SendMailAsync(mailMessage);
+      return true;
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine(ex.ToString());
       return false;
     }
   }

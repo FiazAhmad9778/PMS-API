@@ -1,13 +1,20 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Invoice.Command;
 using PMS.API.Application.Features.Invoice.DTO;
+using PMS.API.Application.Features.Invoices.Commands.GenerateAndSaveInvoice;
 using PMS.API.Application.Features.Invoices.Commands.GenerateInvoice;
 using PMS.API.Application.Features.Invoices.Commands.RequestInvoice;
 using PMS.API.Application.Features.Invoices.DTO;
 using PMS.API.Application.Features.Invoices.Queries.GetInvoiceHistoryList;
 using PMS.API.Application.Features.Invoices.Queries.GetInvoiceDownloadPath;
+using PMS.API.Application.Features.Invoices.Queries.GetPendingInvoicesOrganization;
+using PMS.API.Application.Features.Invoices.Queries.GetPendingInvoicesPatient;
+using PMS.API.Application.Features.Invoices.Commands.SendInvoicesEmail;
+using PMS.API.Application.Features.Invoices.Commands.ResendInvoicesEmail;
+using PMS.API.Application.Features.Organizations.DTO;
+using PMS.API.Application.Features.Patients.DTO;
 
 namespace PMS.API.Web.Api;
 
@@ -107,6 +114,20 @@ public class InvoiceController : BaseApiController
   }
 
   /// <summary>
+  /// Creates invoice history entries, immediately generates invoice files, and marks status as Completed.
+  /// If the same period already has an unsent invoice, it is deleted and recreated. If already sent, that org/patient is skipped and their names are returned in the response.
+  /// </summary>
+  [HttpPost("generate-and-save")]
+  [ProducesResponseType(typeof(ApplicationResult<GenerateAndSaveInvoiceResultDto>), StatusCodes.Status200OK)]
+  public async Task<IActionResult> GenerateAndSaveInvoice([FromBody] GenerateAndSaveInvoiceCommand command)
+  {
+    var result = await Mediator.Send(command);
+    if (!result.Success)
+      return BadRequest(result);
+    return Ok(result);
+  }
+
+  /// <summary>
   /// Returns created invoices from invoice history. By default returns all; optionally filter by internal organization and/or patient IDs.
   /// </summary>
   /// <param name="organizationIds">Internal organization IDs (Organization.Id).</param>
@@ -147,6 +168,76 @@ public class InvoiceController : BaseApiController
     var contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     var fileName = Path.GetFileName(pathResult.Data);
     return PhysicalFile(fullPath, contentType, fileName);
+  }
+
+  /// <summary>
+  /// Returns organizations that have a latest invoice generated but not sent. For use on the organization tab "Send invoices" flow.
+  /// </summary>
+  [HttpGet("organization/get-pending-invoices")]
+  [ProducesResponseType(typeof(ApplicationResult<List<OrganizationResponseDto>>), StatusCodes.Status200OK)]
+  public async Task<IActionResult> GetPendingInvoicesOrganization(
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 50,
+    [FromQuery] string? searchKeyword = null)
+  {
+    var result = await Mediator.Send(new GetPendingInvoicesOrganizationQuery
+    {
+      PageNumber = pageNumber,
+      PageSize = pageSize,
+      SearchKeyword = searchKeyword
+    });
+    if (!result.Success)
+      return BadRequest(result);
+    return Ok(result);
+  }
+
+  /// <summary>
+  /// Returns patients that have a latest invoice generated but not sent. For use on the patient tab "Send invoices" flow.
+  /// </summary>
+  [HttpGet("patient/get-pending-invoices")]
+  [ProducesResponseType(typeof(ApplicationResult<List<PatientResponseDto>>), StatusCodes.Status200OK)]
+  public async Task<IActionResult> GetPendingInvoicesPatient(
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 50,
+    [FromQuery] string? searchKeyword = null)
+  {
+    var result = await Mediator.Send(new GetPendingInvoicesPatientQuery
+    {
+      PageNumber = pageNumber,
+      PageSize = pageSize,
+      SearchKeyword = searchKeyword
+    });
+    if (!result.Success)
+      return BadRequest(result);
+    return Ok(result);
+  }
+
+  /// <summary>
+  /// Marks invoices as sent for the given organization and/or patient IDs. Same API for both organization and patient tabs.
+  /// </summary>
+  [HttpPost("send-invoices-email")]
+  [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
+  public async Task<IActionResult> SendInvoicesEmail([FromBody] SendInvoicesEmailCommand command)
+  {
+    command.WebRootPath = _env.WebRootPath ?? "wwwroot";
+    var result = await Mediator.Send(command);
+    if (!result.Success)
+      return BadRequest(result);
+    return Ok(result);
+  }
+
+  /// <summary>
+  /// Resends the invoice email for a single organization or patient. Body: { "organizationId": 1 } or { "patientId": 5 }. Marks invoice as sent (IsSent) after successful send so UI can use this for both send and resend.
+  /// </summary>
+  [HttpPost("resend-invoices-email")]
+  [ProducesResponseType(typeof(ApplicationResult<bool>), StatusCodes.Status200OK)]
+  public async Task<IActionResult> ResendInvoicesEmail([FromBody] ResendInvoicesEmailCommand command)
+  {
+    command.WebRootPath = _env.WebRootPath ?? "wwwroot";
+    var result = await Mediator.Send(command);
+    if (!result.Success)
+      return BadRequest(result);
+    return Ok(result);
   }
 }
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -17,8 +17,6 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
 
     builder.Property(p => p.PatientId)
         .HasColumnName("patientId");
-
-    builder.Property(p => p.WardId);
 
     builder.Property(p => p.Name)
         .HasColumnName("name")
@@ -58,13 +56,6 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
     builder.HasIndex(p => p.Name);
     builder.HasIndex(p => p.PatientId);
     builder.HasIndex(p => p.Status);
-
-    builder.HasOne(x => x.Ward)
-      .WithMany(x => x.Patients)
-      .HasForeignKey(x => x.WardId)
-      .OnDelete(DeleteBehavior.Cascade);
-
-
   }
 }
 

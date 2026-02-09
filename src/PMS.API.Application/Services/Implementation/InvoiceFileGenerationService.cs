@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -151,7 +151,7 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
 
         SUM(ISNULL(apd.Amount, 0)) AS PaymentsMade,
 
-        SUM(ISNULL(ai.Paid, 0)) AS OutstandingCharges
+        (SUM(ISNULL(ai.SubTotal, 0)) + SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) - SUM(ISNULL(apd.Amount, 0))) AS OutstandingCharges
     FROM [{_databaseName}].dbo.NHWard w
     JOIN [{_databaseName}].dbo.Pat p 
         ON p.NHWardID = w.ID
@@ -227,7 +227,7 @@ public class InvoiceFileGenerationService : IInvoiceFileGenerationService
             SUM(ISNULL(ai.SubTotal, 0)) AS ChargesOnAccount,
             SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) AS TaxIncluded,
             SUM(ISNULL(ai.PaymentPending, 0)) AS PaymentsMade,
-            SUM(ISNULL(ai.Paid, 0)) AS OutstandingCharges
+            (SUM(ISNULL(ai.SubTotal, 0)) + SUM(ISNULL(ai.Tax1, 0) + ISNULL(ai.Tax2, 0)) - SUM(ISNULL(ai.PaymentPending, 0))) AS OutstandingCharges
         FROM [{_databaseName}].dbo.Pat p
         LEFT JOIN [{_databaseName}].dbo.NHWard w ON w.ID = p.NHWardID
         JOIN [{_databaseName}].dbo.AR ar ON ar.BillToPatID = p.ID

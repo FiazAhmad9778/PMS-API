@@ -1,4 +1,4 @@
-﻿using Amazon.S3;
+using Amazon.S3;
 using Ardalis.ListStartupServices;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
@@ -188,10 +188,11 @@ using (var scope = app.Services.CreateScope())
     //    service => service.ProcessPendingOrdersAsync(CancellationToken.None),
     //    "*/10 * * * *"); // Every 10 minutes
 
-    recurringJobManager.AddOrUpdate<IInvoiceProcessingService>(
-        "process-pending-invoices",
-        service => service.ProcessPendingInvoicesAsync(CancellationToken.None),
-        "*/5 * * * *"); // Every 5 minutes
+    // Cron disabled: invoice generation is triggered via API (generate-and-save) instead.
+    //recurringJobManager.AddOrUpdate<IInvoiceProcessingService>(
+    //    "process-pending-invoices",
+    //    service => service.ProcessPendingInvoicesAsync(CancellationToken.None),
+    //    "*/5 * * * *"); // Every 5 minutes
   }
   catch (Exception ex)
   {
