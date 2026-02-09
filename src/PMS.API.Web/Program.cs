@@ -1,4 +1,4 @@
-using Amazon.S3;
+﻿using Amazon.S3;
 using Ardalis.ListStartupServices;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
@@ -178,15 +178,15 @@ using (var scope = app.Services.CreateScope())
     // Hangfire recurring jobs
     var recurringJobManager = services.GetRequiredService<IRecurringJobManager>();
 
-    //recurringJobManager.AddOrUpdate<IDocumentService>(
-    //    "sync-documents",
-    //    service => service.SyncDocuments(CancellationToken.None),
-    //    "*/2 * * * *");
+    recurringJobManager.AddOrUpdate<IDocumentService>(
+        "sync-documents",
+        service => service.SyncDocuments(CancellationToken.None),
+        "*/2 * * * *");
 
-    //recurringJobManager.AddOrUpdate<IOrderFaxService>(
-    //    "process-pending-orders",
-    //    service => service.ProcessPendingOrdersAsync(CancellationToken.None),
-    //    "*/10 * * * *"); // Every 10 minutes
+    recurringJobManager.AddOrUpdate<IOrderFaxService>(
+        "process-pending-orders",
+        service => service.ProcessPendingOrdersAsync(CancellationToken.None),
+        "*/2 * * * *"); // Every 10 minutes
 
     // Cron disabled: invoice generation is triggered via API (generate-and-save) instead.
     //recurringJobManager.AddOrUpdate<IInvoiceProcessingService>(
