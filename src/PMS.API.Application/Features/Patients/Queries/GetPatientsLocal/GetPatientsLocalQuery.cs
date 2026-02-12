@@ -102,8 +102,8 @@ public class GetPatientsLocalQueryHandler : RequestHandlerBase<GetPatientsLocalQ
         Status = x.Status,
         CreatedDate = x.CreatedDate,
         // Latest invoice by last created (CreatedDate), not by invoice period from/to
-        InvoicePath = x.InvoiceHistoryList.Where(h => h.PatientId == x.Id)
-          .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => h.FilePath).FirstOrDefault() ?? string.Empty,
+        LastInvoiceId = x.InvoiceHistoryList.Where(h => h.PatientId == x.Id)
+          .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => (long?)h.Id).FirstOrDefault(),
         InvoiceIsSent = x.InvoiceHistoryList.Where(h => h.PatientId == x.Id)
           .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => (bool?)h.IsSent).FirstOrDefault(),
         InvoiceFromDate = x.InvoiceHistoryList.Where(h => h.PatientId == x.Id)

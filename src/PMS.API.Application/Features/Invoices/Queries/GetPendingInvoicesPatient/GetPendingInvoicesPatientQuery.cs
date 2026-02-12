@@ -82,11 +82,11 @@ public class GetPendingInvoicesPatientQueryHandler : RequestHandlerBase<GetPendi
         DefaultEmail = p.DefaultEmail,
         Status = p.Status,
         CreatedDate = p.CreatedDate,
-        InvoicePath = p.InvoiceHistoryList
+        LastInvoiceId = p.InvoiceHistoryList
           .Where(h => h.PatientId == p.Id)
           .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id)
-          .Select(h => h.FilePath)
-          .FirstOrDefault() ?? string.Empty,
+          .Select(h => (long?)h.Id)
+          .FirstOrDefault(),
         InvoiceFromDate = p.InvoiceHistoryList
           .Where(h => h.PatientId == p.Id)
           .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id)

@@ -83,11 +83,11 @@ public class GetPendingInvoicesOrganizationQueryHandler : RequestHandlerBase<Get
         CreatedDate = x.CreatedDate,
         ModifiedDate = x.ModifiedDate,
         WardIds = x.Wards.Select(w => w.Id).ToArray(),
-        InvoicePath = x.InvoiceHistoryList
+        LastInvoiceId = x.InvoiceHistoryList
           .Where(h => h.OrganizationId == x.Id)
           .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id)
-          .Select(h => h.FilePath)
-          .FirstOrDefault() ?? string.Empty,
+          .Select(h => (long?)h.Id)
+          .FirstOrDefault(),
         InvoiceFromDate = x.InvoiceHistoryList
           .Where(h => h.OrganizationId == x.Id)
           .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id)

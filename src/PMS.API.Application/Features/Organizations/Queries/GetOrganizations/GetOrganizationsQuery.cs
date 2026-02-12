@@ -131,8 +131,8 @@ public class GetOrganizationsQueryHandler : RequestHandlerBase<GetOrganizationsQ
           ModifiedDate = x.ModifiedDate,
           WardIds = x.Wards.Select(w => w.Id).ToArray(),
           // Latest invoice by last created (CreatedDate), not by invoice period from/to
-          InvoicePath = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
-                        .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => h.FilePath).FirstOrDefault() ?? string.Empty,
+          LastInvoiceId = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
+                        .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => (long?)h.Id).FirstOrDefault(),
           InvoiceIsSent = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
                         .OrderByDescending(h => h.CreatedDate).ThenByDescending(h => h.Id).Select(h => (bool?)h.IsSent).FirstOrDefault(),
           InvoiceFromDate = x.InvoiceHistoryList.Where(h => h.OrganizationId == x.Id)
