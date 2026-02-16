@@ -62,7 +62,7 @@ public class GetARDashboardOrganizationsQueryHandler : RequestHandlerBase<GetARD
         Name = org.Name,
         WardIds = org.Wards.Select(w => w.Id).ToArray(), // Get WardIds from navigation property
         Address = org.Address,
-        DefaultEmail = org.DefaultEmail,
+        DefaultEmail = org.ContractEmail,
         CreatedDate = org.CreatedDate
       }).ToList();
 

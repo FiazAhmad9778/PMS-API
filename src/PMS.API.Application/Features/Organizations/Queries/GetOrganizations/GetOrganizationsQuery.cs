@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
@@ -36,7 +36,7 @@ public class GetOrganizationsQueryHandler : RequestHandlerBase<GetOrganizationsQ
       query = query.Where(x =>
           x.Name.Contains(request.SearchKeyword) ||
           x.Address.Contains(request.SearchKeyword) ||
-          x.DefaultEmail!.Contains(request.SearchKeyword));
+          x.ContractEmail!.Contains(request.SearchKeyword));
     }
 
     if (request.OrganizationId is not null)
@@ -126,7 +126,7 @@ public class GetOrganizationsQueryHandler : RequestHandlerBase<GetOrganizationsQ
           OrganizationExternalId = x.OrganizationExternalId,
           Name = x.Name,
           Address = x.Address,
-          DefaultEmail = x.DefaultEmail,
+          DefaultEmail = x.ContractEmail,
           CreatedDate = x.CreatedDate,
           ModifiedDate = x.ModifiedDate,
           WardIds = x.Wards.Select(w => w.Id).ToArray(),

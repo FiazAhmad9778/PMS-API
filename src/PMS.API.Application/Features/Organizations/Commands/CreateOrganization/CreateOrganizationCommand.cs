@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +28,10 @@ public class CreateOrganizationCommand : IRequest<ApplicationResult<long>>
   public string? Address { get; set; }
 
   public string? DefaultEmail { get; set; }
+  public string? ContactName { get; set; }
+  public int? MinimumThreshold { get; set; }
+  public bool IsPatientRequired { get; set; }
+  public List<string> CC { get; set; } = new List<string>();
 }
 
 public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCommand, ApplicationResult<long>>
@@ -131,9 +135,13 @@ public class CreateOrganizationHandler : RequestHandlerBase<CreateOrganizationCo
         OrganizationExternalId = request.OrganizationExternalId,
         Name = firstRow.OrganizationName ?? request.Name ?? string.Empty,
         Address = firstRow.Address ?? request.Address ?? string.Empty,
-        DefaultEmail = string.IsNullOrWhiteSpace(request.DefaultEmail)
+        ContractEmail = string.IsNullOrWhiteSpace(request.DefaultEmail)
               ? null
               : request.DefaultEmail,
+        ContactName = request.ContactName,
+        MinimumThreshold = request.MinimumThreshold,
+        IsPatientRequired = request.IsPatientRequired,
+        CC = request.CC.Any() ? string.Join(",", request.CC) : string.Empty,
         CreatedDate = DateTime.UtcNow
       };
 

@@ -15,6 +15,7 @@ public class InvoiceHistory : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public long Id { get; set; }
   public long? OrganizationId { get; set; }
   public long? PatientId { get; set; }
+  public long? OrganizationPatientId { get; set; }
   public bool IsSent { get; set; }
   public string? InvoiceStatus { get; set; }
   public string? InvoiceStatusHistory { get; set; }
@@ -27,6 +28,7 @@ public class InvoiceHistory : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public long? ModifiedBy { get; set; }
   public bool IsDeleted { get; set; }
   public Patient? Patient { get; set; }
+  public OrganizationPatient? OrganizationPatient { get; set; }
   public Organization? Organization { get; set; }
 
   public List<InvoiceHistoryWard> InvoiceHistoryWardList { get; set; }

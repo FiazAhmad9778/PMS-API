@@ -11,7 +11,12 @@ public class Organization : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public required long OrganizationExternalId { get; set; }
   public required string Name { get; set; }
   public required string Address { get; set; }
-  public string? DefaultEmail { get; set; }
+  public string? ContactName { get; set; }
+  public string? ContractEmail { get; set; }
+  public int? MinimumThreshold { get; set; }
+  public bool IsPatientRequired { get; set; }
+  public string? CC { get; set; }
+
   public DateTime CreatedDate { get; set; }
   public long? CreatedBy { get; set; }
   public DateTime? ModifiedDate { get; set; }
@@ -20,5 +25,6 @@ public class Organization : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public List<Ward> Wards { get; set; } = new List<Ward>();
 
   public List<InvoiceHistory> InvoiceHistoryList { get; set; } = new List<InvoiceHistory>();
+  public List<OrganizationPatient> OrganizationPatientList { get; set; } = new List<OrganizationPatient>();
 }
 

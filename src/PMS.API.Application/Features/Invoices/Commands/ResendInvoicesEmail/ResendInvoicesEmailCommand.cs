@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -66,12 +66,12 @@ public class ResendInvoicesEmailCommandHandler : RequestHandlerBase<ResendInvoic
       var org = await _appDbContext.Organization
         .AsNoTracking()
         .Where(o => o.Id == orgId)
-        .Select(o => new { o.Name, o.DefaultEmail })
+        .Select(o => new { o.Name, o.ContractEmail })
         .FirstOrDefaultAsync(cancellationToken);
       if (org == null)
         return ApplicationResult<bool>.Error("Organization not found.");
 
-      var toEmail = org.DefaultEmail?.Trim();
+      var toEmail = org.ContractEmail?.Trim();
       if (string.IsNullOrEmpty(toEmail))
         return ApplicationResult<bool>.Error("Organization has no default email.");
 

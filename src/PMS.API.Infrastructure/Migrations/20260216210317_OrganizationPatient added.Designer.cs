@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMS.API.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PMS.API.Infrastructure.Data;
 namespace PMS.API.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260216210317_OrganizationPatient added")]
+    partial class OrganizationPatientadded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -862,11 +865,6 @@ namespace PMS.API.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("contactName");
 
-                    b.Property<string>("ContractEmail")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("contractEmail");
-
                     b.Property<long?>("CreatedBy")
                         .HasColumnType("bigint")
                         .HasColumnName("createdBy");
@@ -874,6 +872,11 @@ namespace PMS.API.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("createdDate");
+
+                    b.Property<string>("DefaultEmail")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("defaultEmail");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()

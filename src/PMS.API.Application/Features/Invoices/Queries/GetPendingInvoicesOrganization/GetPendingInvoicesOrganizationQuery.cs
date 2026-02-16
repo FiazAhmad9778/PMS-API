@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMS.API.Application.Common;
@@ -64,7 +64,7 @@ public class GetPendingInvoicesOrganizationQueryHandler : RequestHandlerBase<Get
       orgQuery = orgQuery.Where(o =>
         (o.Name != null && o.Name.Contains(kw)) ||
         (o.Address != null && o.Address.Contains(kw)) ||
-        (o.DefaultEmail != null && o.DefaultEmail.Contains(kw)));
+        (o.ContractEmail != null && o.ContractEmail.Contains(kw)));
     }
 
     var totalCount = await orgQuery.CountAsync(cancellationToken);
@@ -79,7 +79,7 @@ public class GetPendingInvoicesOrganizationQueryHandler : RequestHandlerBase<Get
         OrganizationExternalId = x.OrganizationExternalId,
         Name = x.Name,
         Address = x.Address,
-        DefaultEmail = x.DefaultEmail,
+        DefaultEmail = x.ContractEmail,
         CreatedDate = x.CreatedDate,
         ModifiedDate = x.ModifiedDate,
         WardIds = x.Wards.Select(w => w.Id).ToArray(),

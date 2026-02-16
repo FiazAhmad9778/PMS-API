@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PMS.API.Application.Common.Models;
 using PMS.API.Application.Features.Organizations.Commands.CreateOrganization;
+using PMS.API.Application.Features.Organizations.Commands.EditOrganizationCommand;
 using PMS.API.Application.Features.Organizations.DTO;
 using PMS.API.Application.Features.Organizations.Queries;
 using PMS.API.Application.Features.Organizations.Queries.GetOrganizationDropdown;
@@ -23,6 +24,13 @@ public class OrganizationController : BaseApiController
   [HttpPost("save")]
   [ProducesResponseType(typeof(ApplicationResult<long>), StatusCodes.Status200OK)]
   public async Task<ApplicationResult<long>> Save(CreateOrganizationCommand request)
+  {
+    return await Mediator.Send(request);
+  }
+
+  [HttpPut("edit")]
+  [ProducesResponseType(typeof(ApplicationResult<long>), StatusCodes.Status200OK)]
+  public async Task<ApplicationResult<long>> Edit(EditOrganizationCommand request)
   {
     return await Mediator.Send(request);
   }

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PMS.API.Core.Domain.Entities;
 
@@ -23,13 +23,31 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
         .IsRequired()
         .HasMaxLength(500);
 
+    builder.Property(o => o.MinimumThreshold)
+      .HasColumnName("minimumThreshold")
+      .IsRequired();
+
+    builder.Property(o => o.IsPatientRequired)
+    .HasColumnName("isPatientRequired")
+    .HasDefaultValue(false);
+
+    builder.Property(o => o.CC)
+     .HasColumnName("cc")
+     .IsRequired()
+     .HasMaxLength(1000);
+
+    builder.Property(o => o.ContactName)
+        .HasColumnName("contactName")
+        .IsRequired()
+        .HasMaxLength(500);
+
     builder.Property(o => o.Address)
         .HasColumnName("address")
         .IsRequired()
         .HasMaxLength(1000);
 
-    builder.Property(o => o.DefaultEmail)
-        .HasColumnName("defaultEmail")
+    builder.Property(o => o.ContractEmail)
+        .HasColumnName("contractEmail")
         .HasMaxLength(255);
 
     builder.Property(o => o.CreatedDate)

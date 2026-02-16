@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -64,11 +64,11 @@ public class SendInvoicesEmailCommandHandler : RequestHandlerBase<SendInvoicesEm
         var org = await _appDbContext.Organization
           .AsNoTracking()
           .Where(o => o.Id == orgId)
-          .Select(o => new { o.Name, o.DefaultEmail })
+          .Select(o => new { o.Name, o.ContractEmail })
           .FirstOrDefaultAsync(cancellationToken);
         if (org == null) continue;
 
-        var toEmail = org.DefaultEmail?.Trim();
+        var toEmail = org.ContractEmail?.Trim();
         if (string.IsNullOrEmpty(toEmail))
         {
           Logger.LogWarning("Organization Id {OrgId} ({Name}) has no DefaultEmail; skipping send.", orgId, org.Name);

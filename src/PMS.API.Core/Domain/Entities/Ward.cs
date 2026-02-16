@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using PMS.API.Core.Domain.Interfaces;
 using PMS.API.SharedKernel.Interfaces;
 
@@ -17,4 +17,7 @@ public class Ward : IAggregateRoot, ISoftDeleteEntity, IAuditEntity
   public DateTime? ModifiedDate { get; set; }
   public long? ModifiedBy { get; set; }
   public bool IsDeleted { get; set; }
+
+  public List<OrganizationPatient> OrganizationPatientList { get; set; } = new List<OrganizationPatient>();
+
 }
